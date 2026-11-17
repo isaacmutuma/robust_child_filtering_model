@@ -1,0 +1,3 @@
+# Colab extras on top of the preinstalled torch / numpy / pandas / sklearn / pyarrow
+open_clip_torch==3.3.0
+huggingface_hub

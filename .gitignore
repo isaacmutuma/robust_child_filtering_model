@@ -1,0 +1,22 @@
+# Data and anything per-image: stays on Google Drive, never in git
+/data/
+*.npy
+*.npz
+*.parquet
+*.csv
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+embeddings/
+folds/
+per_image/
+checkpoints/
+# Local environments and caches
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+# Agent working files
+CLAUDE.md
