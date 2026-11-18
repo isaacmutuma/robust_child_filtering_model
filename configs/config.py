@@ -100,9 +100,9 @@ FOLD_AGE_BANDS = [(0, 9), (10, 17), (18, 19), (20, 39), (40, 59), (60, 200)]
 SUCCESS = {"small_gap_max": 0.03, "adult_fpr_max": 0.05, "adult_fpr_vs_A": 0.02,
            "mae_noninferiority_years": 0.5}
 # Holm family for criterion 1 (§4: B, C, chosen D, E-invariant, E-equal-errors, each data
-# variant (FairFace extra data, within-group mixup; PLAN.md) and F). Until all have run,
+# variant (FairFace extra data, within-group mixup; PLAN.md) and F; C2 added 2026-11-18). Until all have run,
 # missing members count as p = 1, which is conservative ('interim').
-HOLM_FAMILY = ["B", "C", "D", "E_inv", "E_eq", "data_fairface", "data_mixup", "F"]
+HOLM_FAMILY = ["B", "C", "C2", "D", "E_inv", "E_eq", "data_fairface", "data_mixup", "F"]
 
 # Audit D4 prompts: used ONLY to cross-check our embeddings against Phase 1 CLIP L/14 scores
 AUDIT_CHILD_PROMPTS = ["a photo of a child", "a photo of a kid", "a photo of a baby",

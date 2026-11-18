@@ -113,6 +113,103 @@ def test_oof_worst_group_runs_for_B_and_C():
         print(f"  {fixed['method']}: OOF MAE {mae:.2f}, epochs {[r['epochs'] for r in rec]}")
 
 
+
+# ── v2 selection rule and C2 (2026-11-18) ────────────────────────────────────
+def _load(path, name):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(name, path)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def test_v1_paths_unchanged():
+    """B and C under rule v1 must give the same predictions as the committed v1 code."""
+    old = Path(sys.argv[2]) if len(sys.argv) > 2 else None
+    if old is None or not old.exists():
+        print("  (skipped: pass the v1 train.py path as argv[2])")
+        return
+    O = _load(old, "train_v1")
+    X, y, g, age = synth(4000, seed=5)
+    folds = np.arange(len(y)) % 5
+    small = {"hidden": [0], "lr": [3e-3], "weight_decay": [1e-4]}
+    for fixed, grid in [({**T.FIXED_B, "max_epochs": 4}, small),
+                        ({**T.FIXED_C, "max_epochs": 4}, {**small, "dro_eta": [0.1]})]:
+        p_old, _ = O.oof_predictions(X, y, folds, grid, fixed, groups=g, select="worst_group",
+                                     log=lambda *_: None)
+        p_new, _ = T.oof_predictions(X, y, folds, grid, fixed, groups=g, select="worst_group",
+                                     log=lambda *_: None)
+        assert np.array_equal(p_old, p_new), (fixed["method"], np.abs(p_old - p_new).max())
+
+
+def test_c2_eta0_equals_plain():
+    X, y, g, age = synth(3000, seed=6)
+    st = T.Standardiser().fit(X)
+    base = {"hidden": 32, "lr": 3e-3, "weight_decay": 1e-4}
+    pf_plain, _, _ = T.fit_head(st(X), y, {**T.FIXED_A, **base}, 5, 0, "cpu", None, g, age)
+    pf_c2, _, info = T.fit_head(st(X), y, {**T.FIXED_C2, **base, "dro_eta": 0.0}, 5, 0, "cpu",
+                                None, g, age)
+    d = np.abs(pf_plain(st(X)) - pf_c2(st(X))).max()
+    print(f"  C2 eta=0 vs plain: max prediction difference {d:.2e} years")
+    assert d < 1e-3 and info["dro_init"] == "natural"
+    assert all(abs(v - 1) < 1e-4 for v in info["dro_weight_over_share_top5"].values())
+    # with eta > 0 the hard group gains weight relative to its share
+    X2, y2, g2, a2 = synth(4000, seed=3, noisy_black_teens=8.0)
+    st2 = T.Standardiser().fit(X2)
+    _, _, info2 = T.fit_head(st2(X2), y2, {**T.FIXED_C2, **base, "dro_eta": 0.01}, 10, 0, "cpu",
+                             None, g2, a2)
+    top = list(info2["dro_weight_over_share_top5"])
+    print("  C2 weight/share top:", {k: round(v, 2) for k, v in info2["dro_weight_over_share_top5"].items()})
+    assert top[0] == "Black|10-17"
+
+
+def test_v2_rule():
+    ref = {"fpr": {"White": 0.006, "Black": 0.004, "Asian": 0.003, "Indian": 0.003}, "mae": 4.4}
+    rng = np.random.default_rng(0)
+    n = 6000
+    g = rng.choice(GROUPS, n, p=[.42, .19, .15, .17, .07])
+    y = rng.integers(0, 80, n).astype(float)
+    good = y + rng.normal(0, 3, n)
+    st = T.selection_stats_v2(good, y, g, ref)
+    blk_ad = (g == "Black") & (y >= 20) & (y <= 59)
+    bad = good.copy()
+    bad[np.flatnonzero(blk_ad)[: int(0.05 * blk_ad.sum())]] = 10.0    # 5% of Black adults flagged
+    sb = T.selection_stats_v2(bad, y, g, ref)
+    assert not sb["feasible"] and sb["n_violations"] >= 1 and sb["fpr_excess"] > 0
+    worse = good + rng.normal(0, 4, n)                                   # MAE much higher
+    sw = T.selection_stats_v2(worse, y, g, {**ref, "mae": st["mae"]})
+    assert sw["mae_excess"] > 0 and not sw["feasible"]
+    feas = {**st, "feasible": True, "n_violations": 0, "fpr_excess": 0.0, "mae_excess": 0.0}
+    assert min([sb, feas], key=lambda s: T._rank_key(s, "worst_group_v2")) is feas
+
+
+def test_oof_v2_with_A_reference():
+    X, y, g, _ = synth(10000, seed=4)
+    folds = np.arange(len(y)) % 5
+    gridA = {"hidden": [0, 32], "lr": [3e-3], "weight_decay": [1e-4]}
+    saved = T.GRID_A
+    T.GRID_A = gridA                     # reference uses A's grid order
+    try:
+        fixedA = {**T.FIXED_A, "max_epochs": 6}
+        _, recA = T.oof_predictions(X, y, folds, gridA, fixedA, log=lambda *_: None)
+        refA = [{"chosen": r["chosen"], "epochs": r["epochs"], "inner_val_mae": r["inner_val_mae"]}
+                for r in recA]
+        for fixed, grid in [({**T.FIXED_B, "max_epochs": 6}, {"hidden": [0], "lr": [3e-3],
+                                                             "weight_decay": [1e-4]}),
+                            ({**T.FIXED_C2, "max_epochs": 6}, {"hidden": [0], "lr": [3e-3],
+                                                              "weight_decay": [1e-4],
+                                                              "dro_eta": [0.01]})]:
+            p, rec = T.oof_predictions(X, y, folds, grid, fixed, groups=g,
+                                       select="worst_group_v2", ref_A=refA, log=lambda *_: None)
+            diffs = [r["reference_A"]["mae_diff_vs_A_record"] for r in rec]
+            assert max(abs(d) for d in diffs) < 1e-9, diffs        # exact on CPU
+            print(f"  {fixed['method']}/{fixed.get('dro_init', '-')}: OOF MAE "
+                  f"{np.abs(p - y).mean():.2f}, feasible folds "
+                  f"{sum(r['inner_val_feasible'] for r in rec)}/5")
+    finally:
+        T.GRID_A = saved
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
