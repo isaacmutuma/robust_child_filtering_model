@@ -24,6 +24,9 @@ Protocol (docs/SUCCESS_CRITERIA.md §1, src/folds.py):
                           inner fold + 0.02) and its MAE <= A's inner MAE + 0.5; A's reference
                           is A's chosen setting/epochs for that fold retrained on the same
                           inner training folds
+            'worst_group_v3' (post-hoc, 2026-11-18; FINAL, frozen) as v2, plus every tested
+                          group's stratified minor TPR >= A's on the same inner fold - 0.02
+                          (guard against closing the gap by lowering other groups)
     refit: train on all four training folds with that setting and epoch count
     predict fold k (never seen in tuning or refit)
 Inputs are L2-normalised, then standardised with the TRAINING folds' mean/std only.
@@ -47,7 +50,10 @@ FIXED_A = {"max_epochs": 60, "batch_size": 256, "dropout": 0.1, "loss": "l1",
 GRID_B, FIXED_B = GRID_A, {**FIXED_A, "method": "balanced"}
 GRID_C = {**GRID_A, "dro_eta": [0.001, 0.01, 0.1, 1.0]}
 FIXED_C = {**FIXED_A, "method": "dro", "dro_ema": 0.1}
-GRID_C2, FIXED_C2 = GRID_C, {**FIXED_C, "dro_init": "natural"}
+GRID_C2, FIXED_C2 = GRID_C, {**FIXED_C, "dro_init": "natural"}          # v2 run (uncapped)
+# C2 rerun under v3 (2026-11-18): weights capped to [0.1, 10] x natural share; eta 1 dropped
+GRID_C2_CAP = {**GRID_A, "dro_eta": [0.001, 0.01, 0.1]}
+FIXED_C2_CAP = {**FIXED_C2, "dro_cap": 10.0}
 
 
 def grid_settings(grid):
@@ -147,6 +153,11 @@ def fit_head(Xtr, ytr, s, epochs, seed, device, Xval=None, gtr=None, atr=None):
         natural = s.get("dro_init", "uniform") == "natural"
         share = torch.bincount(gid, minlength=G).float() / len(gid)
         logq = torch.log(share) if natural else torch.zeros(G, device=device)
+        cap = s.get("dro_cap")
+        if cap is not None:   # capped C2: z = log(weight / share), kept in [-ln cap, ln cap]
+            assert natural, "dro_cap is defined for the natural start only"
+            zcap = float(np.log(cap))
+            z = torch.zeros(G, device=device)
         eta, alpha = float(s["dro_eta"]), float(s["dro_ema"])
 
     Xv = torch.from_numpy(Xval).to(device) if Xval is not None else None
@@ -178,9 +189,16 @@ def fit_head(Xtr, ytr, s, epochs, seed, device, Xval=None, gtr=None, atr=None):
                     band_mean = band_sum / band_n.clamp(min=1)
                     ratio = ema / band_mean[band_of].clamp(min=1e-8)
                     # groups at par (ratio 1) or not yet seen keep their weight
-                    logq = logq + eta * torch.where(seen, ratio - 1, torch.zeros_like(ratio))
-                    q = torch.softmax(logq, 0)
-                    if natural:   # per-sample weight q_g / share_g (1 for all at eta = 0)
+                    step = eta * torch.where(seen, ratio - 1, torch.zeros_like(ratio))
+                    if cap is not None:
+                        z = (z + step).clamp(-zcap, zcap)
+                        r = torch.exp(z)[gb]   # weight / natural share, in [1/cap, cap]
+                    else:
+                        logq = logq + step
+                        q = torch.softmax(logq, 0)
+                    if cap is not None:
+                        pass
+                    elif natural:   # per-sample weight q_g / share_g (1 for all at eta = 0)
                         r = (q / share)[gb]
                     else:
                         w = torch.where(present, q, torch.zeros_like(q))
@@ -195,13 +213,20 @@ def fit_head(Xtr, ytr, s, epochs, seed, device, Xval=None, gtr=None, atr=None):
         if Xv is not None:
             val_preds.append(predict_fn(Xv))
     if method == "dro":
-        q = torch.softmax(logq, 0).cpu().numpy()
+        if cap is not None:   # capped: weight proportional to share x e^z
+            qt = share * torch.exp(z)
+            q = (qt / qt.sum()).cpu().numpy()
+        else:
+            q = torch.softmax(logq, 0).cpu().numpy()
         top = np.argsort(-q)[:5]
         info["dro_final_weights_top5"] = {names[i]: float(q[i]) for i in top}
         info["dro_uniform_weight"] = 1.0 / G
         info["dro_init"] = "natural" if natural else "uniform"
+        if cap is not None:
+            info["dro_cap"] = cap
         if natural:   # how far DRO moved each group from its natural share (top 5 ratios)
-            ratio_q = (torch.softmax(logq, 0) / share).cpu().numpy()
+            ratio_q = (torch.exp(z) if cap is not None
+                       else torch.softmax(logq, 0) / share).cpu().numpy()
             info["dro_weight_over_share_top5"] = {names[i]: float(ratio_q[i])
                                                   for i in np.argsort(-ratio_q)[:5]}
     return predict_fn, (np.stack(val_preds) if val_preds is not None else None), info
@@ -218,7 +243,7 @@ def predict(model, X):
 
 
 # ── selection on the inner validation fold ───────────────────────────────────
-def selection_stats(pred, y, groups):
+def selection_stats(pred, y, groups, per_group=False):
     """Inner-fold summary used by the selection rules (no bootstrap)."""
     pred, y, groups = np.asarray(pred), np.asarray(y), np.asarray(groups)
     flag = pred < C.CHILD_AGE_THRESHOLD
@@ -233,10 +258,18 @@ def selection_stats(pred, y, groups):
         tprs[g] = t
         ad = m & (y >= lo) & (y <= hi)
         fprs[g] = float(flag[ad].mean()) if ad.any() else float("nan")
-    return {"mae": float(np.abs(pred - y).mean()),
-            "worst_group_tpr": float(np.nanmin(list(tprs.values()))),
-            "max_adult_fpr": float(np.nanmax(list(fprs.values()))),
-            "feasible": bool(np.nanmax(list(fprs.values())) <= C.SUCCESS["adult_fpr_max"])}
+    out = {"mae": float(np.abs(pred - y).mean()),
+           "worst_group_tpr": float(np.nanmin(list(tprs.values()))),
+           "max_adult_fpr": float(np.nanmax(list(fprs.values()))),
+           "feasible": bool(np.nanmax(list(fprs.values())) <= C.SUCCESS["adult_fpr_max"])}
+    if per_group:
+        out["tpr_by_group"] = {g: float(t) for g, t in tprs.items()}
+    return out
+
+
+def group_tpr(pred, y, groups):
+    """Per tested group stratified minor TPR (fixed reference weights)."""
+    return selection_stats(pred, y, groups, per_group=True)["tpr_by_group"]
 
 
 def group_fpr_mae(pred, y, groups):
@@ -264,8 +297,22 @@ def selection_stats_v2(pred, y, groups, ref):
             "fpr_excess": float(sum(excess)), "mae_excess": float(mae_excess)}
 
 
+def selection_stats_v3(pred, y, groups, ref):
+    """v2 stats plus the levelling-down guard (group TPR >= A's inner TPR - 0.02)."""
+    st = selection_stats_v2(pred, y, groups, ref)
+    tpr = group_tpr(pred, y, groups)
+    drop = C.TUNING["tpr_drop_max"]
+    excess = [max(0.0, (ref["tpr"][g] - drop) - tpr[g]) for g in C.TESTED_GROUPS]
+    n_tpr = sum(e > 0 for e in excess)
+    return {**st, "tpr_by_group": tpr, "tpr_excess": float(sum(excess)),
+            "n_violations": st["n_violations"] + n_tpr, "feasible": st["feasible"] and n_tpr == 0}
+
+
 def _rank_key(st, rule):
     """Sort key (smaller is better) for one (setting, epoch) candidate."""
+    if rule == "worst_group_v3":
+        return (not st["feasible"], st["n_violations"], st["fpr_excess"], st["tpr_excess"],
+                st["mae_excess"], -st["worst_group_tpr"], st["mae"])
     if rule == "mae":
         return (st["mae"],)
     if rule == "worst_group_v2":
@@ -292,6 +339,7 @@ def _reference_A(rA, X, y, groups, tr_in, va, st, seed, k, device):
     _, vp, _ = fit_head(st(X[tr_in]), y[tr_in], s, rA["epochs"], seed + 1000 * k + i, device,
                         st(X[va]), groups[tr_in], y[tr_in])
     ref = group_fpr_mae(vp[-1], y[va], groups[va])
+    ref["tpr"] = group_tpr(vp[-1], y[va], groups[va])
     ref["mae_diff_vs_A_record"] = ref["mae"] - rA["inner_val_mae"]
     if abs(ref["mae_diff_vs_A_record"]) > 0.05:
         raise RuntimeError(f"fold {k}: A reference MAE {ref['mae']:.3f} does not reproduce "
@@ -319,7 +367,7 @@ def oof_predictions(X, y, folds, grid=None, fixed=None, device="cpu", seed=None,
         gsub = (lambda m: groups[m]) if groups is not None else (lambda m: None)
         st = Standardiser().fit(X[tr_in])
         ref = None
-        if select == "worst_group_v2":
+        if select in ("worst_group_v2", "worst_group_v3"):
             ref = _reference_A(ref_A[k], X, y, groups, tr_in, va, st, seed, k, device)
         trials = []
         for i, s in enumerate(grid_settings(grid)):
@@ -330,6 +378,8 @@ def oof_predictions(X, y, folds, grid=None, fixed=None, device="cpu", seed=None,
                 stats = [{"mae": float(np.abs(p - y[va]).mean())} for p in vp]
             elif select == "worst_group_v2":
                 stats = [selection_stats_v2(p, y[va], groups[va], ref) for p in vp]
+            elif select == "worst_group_v3":
+                stats = [selection_stats_v3(p, y[va], groups[va], ref) for p in vp]
             else:
                 stats = [selection_stats(p, y[va], groups[va]) for p in vp]
             best = min(range(len(stats)), key=lambda e: _rank_key(stats[e], select))

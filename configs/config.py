@@ -99,6 +99,8 @@ FOLD_AGE_BANDS = [(0, 9), (10, 17), (18, 19), (20, 39), (40, 59), (60, 200)]
 # Success thresholds (§4)
 SUCCESS = {"small_gap_max": 0.03, "adult_fpr_max": 0.05, "adult_fpr_vs_A": 0.02,
            "mae_noninferiority_years": 0.5}
+# Tuning rule v3 (FINAL, 2026-11-18): levelling-down guard used in model selection only
+TUNING = {"tpr_drop_max": 0.02}
 # Holm family for criterion 1 (§4: B, C, chosen D, E-invariant, E-equal-errors, each data
 # variant (FairFace extra data, within-group mixup; PLAN.md) and F; C2 added 2026-11-18). Until all have run,
 # missing members count as p = 1, which is conservative ('interim').

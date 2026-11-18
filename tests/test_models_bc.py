@@ -210,6 +210,102 @@ def test_oof_v2_with_A_reference():
         T.GRID_A = saved
 
 
+
+# ── rule v3 and capped C2 (2026-11-18) ───────────────────────────────────────
+def test_v2_paths_unchanged():
+    """B and uncapped C2 under rule v2 must match the committed v2 code (cfab668)."""
+    old = Path(sys.argv[3]) if len(sys.argv) > 3 else None
+    if old is None or not old.exists():
+        print("  (skipped: pass the v2 train.py path as argv[3])")
+        return
+    O = _load(old, "train_v2")
+    X, y, g, _ = synth(6000, seed=7)
+    folds = np.arange(len(y)) % 5
+    gridA = {"hidden": [0, 32], "lr": [3e-3], "weight_decay": [1e-4]}
+    savedT, savedO = T.GRID_A, O.GRID_A
+    T.GRID_A = O.GRID_A = gridA
+    try:
+        _, recA = T.oof_predictions(X, y, folds, gridA, {**T.FIXED_A, "max_epochs": 4},
+                                    log=lambda *_: None)
+        refA = [{"chosen": r["chosen"], "epochs": r["epochs"], "inner_val_mae": r["inner_val_mae"]}
+                for r in recA]
+        small = {"hidden": [0], "lr": [3e-3], "weight_decay": [1e-4]}
+        for fixed, grid in [({**T.FIXED_B, "max_epochs": 4}, small),
+                            ({**T.FIXED_C2, "max_epochs": 4}, {**small, "dro_eta": [0.1]})]:
+            args = (X, y, folds, grid, fixed)
+            kw = dict(groups=g, select="worst_group_v2", ref_A=refA, log=lambda *_: None)
+            p_old, _ = O.oof_predictions(*args, **kw)
+            p_new, _ = T.oof_predictions(*args, **kw)
+            assert np.array_equal(p_old, p_new), (fixed["method"], np.abs(p_old - p_new).max())
+    finally:
+        T.GRID_A, O.GRID_A = savedT, savedO
+
+
+def test_v3_guard_catches_levelling_down():
+    rng = np.random.default_rng(1)
+    n = 8000
+    g = rng.choice(GROUPS, n, p=[.42, .19, .15, .17, .07])
+    y = rng.integers(0, 80, n).astype(float)
+    good = y + rng.normal(0, 3, n)
+    ref = {**T.group_fpr_mae(good, y, g), "tpr": T.group_tpr(good, y, g)}
+    st = T.selection_stats_v3(good, y, g, ref)
+    assert st["feasible"] and st["tpr_excess"] == 0
+    lev = good.copy()                                  # White minors pushed older: TPR drops
+    wm = (g == "White") & (y <= 17)
+    lev[wm] += 6.0
+    sl = T.selection_stats_v3(lev, y, g, ref)
+    s2 = T.selection_stats_v2(lev, y, g, ref)
+    print(f"  White TPR {ref['tpr']['White']:.3f} -> {sl['tpr_by_group']['White']:.3f}; "
+          f"v2 allows it: {s2['feasible']}, v3 allows it: {sl['feasible']}")
+    assert s2["feasible"] and not sl["feasible"] and sl["tpr_excess"] > 0
+    assert min([sl, st], key=lambda s: T._rank_key(s, "worst_group_v3")) is st
+
+
+def test_c2_cap_bounds_weights():
+    X, y, g, age = synth(4000, seed=3, noisy_black_teens=8.0)
+    st = T.Standardiser().fit(X)
+    base = {"hidden": 0, "lr": 3e-3, "weight_decay": 1e-4}
+    _, _, info = T.fit_head(st(X), y, {**T.FIXED_C2_CAP, **base, "dro_eta": 1.0}, 10, 0, "cpu",
+                            None, g, age)
+    top = info["dro_weight_over_share_top5"]
+    print("  capped C2 (eta 1) weight/share top:", {k: round(v, 2) for k, v in top.items()})
+    assert max(top.values()) <= 10.0 + 1e-5          # bound holds even at eta 1 (many hit it)
+    _, _, info_m = T.fit_head(st(X), y, {**T.FIXED_C2_CAP, **base, "dro_eta": 0.01}, 10, 0,
+                              "cpu", None, g, age)
+    print("  capped C2 (eta 0.01) top:", {k: round(v, 2) for k, v in info_m["dro_weight_over_share_top5"].items()})
+    assert list(info_m["dro_weight_over_share_top5"])[0] == "Black|10-17"
+    _, _, info_u = T.fit_head(st(X), y, {**T.FIXED_C2, **base, "dro_eta": 1.0}, 10, 0, "cpu",
+                              None, g, age)
+    print("  uncapped (eta 1) top:", round(max(info_u["dro_weight_over_share_top5"].values()), 1))
+    assert max(info_u["dro_weight_over_share_top5"].values()) > 10
+    pf_plain, _, _ = T.fit_head(st(X), y, {**T.FIXED_A, **base}, 5, 0, "cpu", None, g, age)
+    pf_cap0, _, _ = T.fit_head(st(X), y, {**T.FIXED_C2_CAP, **base, "dro_eta": 0.0}, 5, 0, "cpu",
+                               None, g, age)
+    d = np.abs(pf_plain(st(X)) - pf_cap0(st(X))).max()
+    assert d < 1e-3, d
+
+
+def test_oof_v3_runs():
+    X, y, g, _ = synth(10000, seed=4)
+    folds = np.arange(len(y)) % 5
+    gridA = {"hidden": [0, 32], "lr": [3e-3], "weight_decay": [1e-4]}
+    saved = T.GRID_A
+    T.GRID_A = gridA
+    try:
+        _, recA = T.oof_predictions(X, y, folds, gridA, {**T.FIXED_A, "max_epochs": 6},
+                                    log=lambda *_: None)
+        refA = [{"chosen": r["chosen"], "epochs": r["epochs"], "inner_val_mae": r["inner_val_mae"]}
+                for r in recA]
+        p, rec = T.oof_predictions(X, y, folds, {"hidden": [0], "lr": [3e-3],
+                                                 "weight_decay": [1e-4], "dro_eta": [0.01]},
+                                   {**T.FIXED_C2_CAP, "max_epochs": 6}, groups=g,
+                                   select="worst_group_v3", ref_A=refA, log=lambda *_: None)
+        assert all("tpr" in r["reference_A"] for r in rec)
+        print(f"  C2 capped v3: OOF MAE {np.abs(p - y).mean():.2f}, "
+              f"allowed folds {sum(r['inner_val_feasible'] for r in rec)}/5")
+    finally:
+        T.GRID_A = saved
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

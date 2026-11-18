@@ -23,22 +23,22 @@ from _common import REPO, atomic_copy, sha256
 from configs import config as C
 from src import metrics as M
 from src.provenance import write_result
-from src.train import (FIXED_A, FIXED_B, FIXED_C, FIXED_C2, GRID_A, GRID_B, GRID_C, GRID_C2,
-                       oof_predictions)
+from src.train import (FIXED_A, FIXED_B, FIXED_C, FIXED_C2_CAP, GRID_A, GRID_B, GRID_C,
+                       GRID_C2_CAP, oof_predictions)
 
 MODELS = {
     "A": {"grid": GRID_A, "fixed": FIXED_A, "select": "mae",
           "desc": "plain L1 regression, no group info"},
-    # B and C were first run with select 'worst_group' (v1, results/models/v1/); rerun with
-    # v2 after the 2026-11-18 post-hoc deviation (CLAUDE.md Decision Log)
-    "B": {"grid": GRID_B, "fixed": FIXED_B, "select": "worst_group_v2",
+    # B, C: rule v1 (results/models/v1/), then v2 (results/models/v2/, with C2 uncapped),
+    # now the final rule v3 (CLAUDE.md Decision Log, 2026-11-18)
+    "B": {"grid": GRID_B, "fixed": FIXED_B, "select": "worst_group_v3",
           "desc": "race-balanced sampling within each age band (band shares kept)"},
-    "C": {"grid": GRID_C, "fixed": FIXED_C, "select": "worst_group_v2",
+    "C": {"grid": GRID_C, "fixed": FIXED_C, "select": "worst_group_v3",
           "desc": "group DRO over race x age band, losses scaled by band mean across races; "
                   "group weights start equal"},
-    "C2": {"grid": GRID_C2, "fixed": FIXED_C2, "select": "worst_group_v2",
+    "C2": {"grid": GRID_C2_CAP, "fixed": FIXED_C2_CAP, "select": "worst_group_v3",
            "desc": "as C, but group weights start at each cell's natural share "
-                   "(eta = 0 equals plain training)"},
+                   "(eta = 0 equals plain training), capped to 0.1-10x that share"},
 }
 
 
@@ -103,7 +103,7 @@ def main():
     t0 = time.time()
 
     ids, X, ages, groups, folds, hashes = load_inputs()
-    ref_A = load_A_record() if spec["select"] == "worst_group_v2" else None
+    ref_A = load_A_record() if spec["select"] in ("worst_group_v2", "worst_group_v3") else None
     pred, record = oof_predictions(X, ages, folds, spec["grid"], spec["fixed"], device,
                                    groups=groups, select=spec["select"], ref_A=ref_A)
 
