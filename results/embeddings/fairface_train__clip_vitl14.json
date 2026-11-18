@@ -1,0 +1,203 @@
+{
+  "created_utc": "2026-11-17T12:43:25+00:00",
+  "git": {
+    "commit": "b4c14bba46551cece8e7dcf022e4791cb047e70d",
+    "dirty": false,
+    "source": "git"
+  },
+  "config": {
+    "ENV": "colab",
+    "REPO_DIR": "/content/robust_child_filtering_model",
+    "DRIVE": "/content/drive/MyDrive",
+    "AUDIT_DRIVE": "/content/drive/MyDrive/child-detection-audit",
+    "DRIVE_ROOT": "/content/drive/MyDrive/robust_child_filtering_model",
+    "DATA_DIR": "/content/data",
+    "HF_CACHE_DIR": "/content/hf_cache",
+    "RAW_DIR": "/content/drive/MyDrive/child-detection-audit/raw",
+    "AUDIT_PER_IMAGE_DIR": "/content/drive/MyDrive/child-detection-audit/per_image",
+    "EMB_DIR": "/content/drive/MyDrive/robust_child_filtering_model/embeddings",
+    "FOLDS_DIR": "/content/drive/MyDrive/robust_child_filtering_model/folds",
+    "PER_IMAGE_DIR": "/content/drive/MyDrive/robust_child_filtering_model/per_image",
+    "RESULTS_DIR": "/content/robust_child_filtering_model/results",
+    "FIGURES_DIR": "/content/robust_child_filtering_model/figures",
+    "SOURCES": {
+      "utkface": {
+        "hf_repo": "py97/UTKFace-Cropped",
+        "revision": "e80f21fb21fa3631380c3cb634b79be3ac2f4cba",
+        "file": "UTKFace.tar.gz",
+        "sha256": "2c0655397b498e81b82d685ee74bee8c2e4364a5897caf3afec6ea48929024a7",
+        "n_files": 23708,
+        "n_records": 23705
+      },
+      "fairface_train": {
+        "hf_repo": "mutuma00/FairFace",
+        "revision": "e8e670de53803408a4eaebf503d0a35749907f54",
+        "repo_type": "dataset",
+        "files": {
+          "0.25/train-00000-of-00002-d405faba4f4b9b85.parquet": "acebfc4a735050d0ee618b3c690ad91e1b11bcc25151f398f06990bc15e99d06",
+          "0.25/train-00001-of-00002-dd3cb68164727418.parquet": "e8ec1fb27f0745c166b218708bf4923811cd41d85cb998f09f8f624b0eb40326"
+        },
+        "licence": "CC BY 4.0"
+      }
+    },
+    "CLIP_ARCH": "ViT-L-14",
+    "CLIP_WEIGHTS": {
+      "hf_repo": "timm/vit_large_patch14_clip_224.openai",
+      "revision": "18d0535469bb561bf468d76c1d73aa35156c922b",
+      "file": "open_clip_model.safetensors",
+      "sha256": "9ce2e8a8ebfff3793d7d375ad6d3c35cb9aebf3de7ace0fc7308accab7cd207e"
+    },
+    "EMB_TAG": "clip_vitl14",
+    "UTKFACE_RACES": {
+      "0": "White",
+      "1": "Black",
+      "2": "Asian",
+      "3": "Indian",
+      "4": "Others"
+    },
+    "TESTED_GROUPS": [
+      "White",
+      "Black",
+      "Asian",
+      "Indian"
+    ],
+    "PRIMARY_CONTRAST": [
+      "White",
+      "Black"
+    ],
+    "FAIRFACE_AGE_BINS": [
+      "0-2",
+      "3-9",
+      "10-19",
+      "20-29",
+      "30-39",
+      "40-49",
+      "50-59",
+      "60-69",
+      "more than 70"
+    ],
+    "FAIRFACE_GENDERS": [
+      "Male",
+      "Female"
+    ],
+    "FAIRFACE_RACES": [
+      "East Asian",
+      "Indian",
+      "Black",
+      "White",
+      "Middle Eastern",
+      "Latino_Hispanic",
+      "Southeast Asian"
+    ],
+    "SEED": 0,
+    "N_FOLDS": 5,
+    "N_BOOTSTRAP": 2000,
+    "ALPHA": 0.05,
+    "CHILD_AGE_THRESHOLD": 18,
+    "MINOR_MAX_AGE": 17,
+    "ADULT_FPR_RANGE": [
+      20,
+      59
+    ],
+    "MINOR_STRATA": [
+      [
+        0,
+        9
+      ],
+      [
+        10,
+        17
+      ]
+    ],
+    "STRATUM_WEIGHTS": {
+      "0-9": 0.7234,
+      "10-17": 0.2766
+    },
+    "FOLD_AGE_BANDS": [
+      [
+        0,
+        9
+      ],
+      [
+        10,
+        17
+      ],
+      [
+        18,
+        19
+      ],
+      [
+        20,
+        39
+      ],
+      [
+        40,
+        59
+      ],
+      [
+        60,
+        200
+      ]
+    ],
+    "SUCCESS": {
+      "small_gap_max": 0.03,
+      "adult_fpr_max": 0.05,
+      "adult_fpr_vs_A": 0.02,
+      "mae_noninferiority_years": 0.5
+    },
+    "AUDIT_CHILD_PROMPTS": [
+      "a photo of a child",
+      "a photo of a kid",
+      "a photo of a baby",
+      "a photo of a teenager"
+    ],
+    "AUDIT_ADULT_PROMPTS": [
+      "a photo of an adult",
+      "a photo of a man",
+      "a photo of a woman"
+    ]
+  },
+  "dataset": "fairface_train",
+  "smoke": false,
+  "n_rows": 86744,
+  "n_embedded": 86744,
+  "n_failed": 0,
+  "fail_reasons": {},
+  "n_skipped_names": 0,
+  "dim": 768,
+  "npz": {
+    "drive_path": "embeddings/fairface_train__clip_vitl14.npz",
+    "sha256": "be4fca35e5b03a6d474346f4a38100f52e91c49b83a782f8f2324fd41257c664"
+  },
+  "norm": {
+    "mean": 19.78420639038086,
+    "min": 15.579151153564453,
+    "max": 24.490446090698242
+  },
+  "n_by_group": {
+    "East Asian": 12287,
+    "Indian": 12319,
+    "Black": 12233,
+    "White": 16527,
+    "Middle Eastern": 9216,
+    "Latino_Hispanic": 13367,
+    "Southeast Asian": 10795
+  },
+  "n_minors_by_group": {},
+  "n_teens_10_17_by_group": {},
+  "weights": {
+    "hf_repo": "timm/vit_large_patch14_clip_224.openai",
+    "revision": "18d0535469bb561bf468d76c1d73aa35156c922b",
+    "file": "open_clip_model.safetensors",
+    "sha256": "9ce2e8a8ebfff3793d7d375ad6d3c35cb9aebf3de7ace0fc7308accab7cd207e",
+    "open_clip_arch": "ViT-L-14",
+    "quick_gelu": true,
+    "n_quick_gelu_layers": 36,
+    "open_clip_version": "3.3.0"
+  },
+  "torch": "2.14.1+cu130",
+  "gpu": "Tesla T4",
+  "batch_size": 128,
+  "precision": "fp32",
+  "seconds": 3968.2
+}

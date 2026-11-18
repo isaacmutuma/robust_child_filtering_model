@@ -8,10 +8,10 @@
 *.pth
 *.safetensors
 *.ckpt
-embeddings/
-folds/
-per_image/
-checkpoints/
+/embeddings/
+/folds/
+/per_image/
+/checkpoints/
 # Local environments and caches
 .venv/
 __pycache__/
