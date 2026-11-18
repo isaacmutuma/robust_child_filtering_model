@@ -1,0 +1,554 @@
+{
+  "created_utc": "2026-11-18T06:54:55+00:00",
+  "git": {
+    "commit": "cfab668b5f9e864cdd3ab1bf989a72ce43f53947",
+    "dirty": false,
+    "source": "git"
+  },
+  "config": {
+    "ENV": "colab",
+    "REPO_DIR": "/content/robust_child_filtering_model",
+    "DRIVE": "/content/drive/MyDrive",
+    "AUDIT_DRIVE": "/content/drive/MyDrive/child-detection-audit",
+    "DRIVE_ROOT": "/content/drive/MyDrive/robust_child_filtering_model",
+    "DATA_DIR": "/content/data",
+    "HF_CACHE_DIR": "/content/hf_cache",
+    "RAW_DIR": "/content/drive/MyDrive/child-detection-audit/raw",
+    "AUDIT_PER_IMAGE_DIR": "/content/drive/MyDrive/child-detection-audit/per_image",
+    "EMB_DIR": "/content/drive/MyDrive/robust_child_filtering_model/embeddings",
+    "FOLDS_DIR": "/content/drive/MyDrive/robust_child_filtering_model/folds",
+    "PER_IMAGE_DIR": "/content/drive/MyDrive/robust_child_filtering_model/per_image",
+    "RESULTS_DIR": "/content/robust_child_filtering_model/results",
+    "FIGURES_DIR": "/content/robust_child_filtering_model/figures",
+    "SOURCES": {
+      "utkface": {
+        "hf_repo": "py97/UTKFace-Cropped",
+        "revision": "e80f21fb21fa3631380c3cb634b79be3ac2f4cba",
+        "file": "UTKFace.tar.gz",
+        "sha256": "2c0655397b498e81b82d685ee74bee8c2e4364a5897caf3afec6ea48929024a7",
+        "n_files": 23708,
+        "n_records": 23705
+      },
+      "fairface_train": {
+        "hf_repo": "mutuma00/FairFace",
+        "revision": "e8e670de53803408a4eaebf503d0a35749907f54",
+        "repo_type": "dataset",
+        "files": {
+          "0.25/train-00000-of-00002-d405faba4f4b9b85.parquet": "acebfc4a735050d0ee618b3c690ad91e1b11bcc25151f398f06990bc15e99d06",
+          "0.25/train-00001-of-00002-dd3cb68164727418.parquet": "e8ec1fb27f0745c166b218708bf4923811cd41d85cb998f09f8f624b0eb40326"
+        },
+        "licence": "CC BY 4.0"
+      }
+    },
+    "CLIP_ARCH": "ViT-L-14",
+    "CLIP_WEIGHTS": {
+      "hf_repo": "timm/vit_large_patch14_clip_224.openai",
+      "revision": "18d0535469bb561bf468d76c1d73aa35156c922b",
+      "file": "open_clip_model.safetensors",
+      "sha256": "9ce2e8a8ebfff3793d7d375ad6d3c35cb9aebf3de7ace0fc7308accab7cd207e"
+    },
+    "EMB_TAG": "clip_vitl14",
+    "UTKFACE_RACES": {
+      "0": "White",
+      "1": "Black",
+      "2": "Asian",
+      "3": "Indian",
+      "4": "Others"
+    },
+    "TESTED_GROUPS": [
+      "White",
+      "Black",
+      "Asian",
+      "Indian"
+    ],
+    "PRIMARY_CONTRAST": [
+      "White",
+      "Black"
+    ],
+    "FAIRFACE_AGE_BINS": [
+      "0-2",
+      "3-9",
+      "10-19",
+      "20-29",
+      "30-39",
+      "40-49",
+      "50-59",
+      "60-69",
+      "more than 70"
+    ],
+    "FAIRFACE_GENDERS": [
+      "Male",
+      "Female"
+    ],
+    "FAIRFACE_RACES": [
+      "East Asian",
+      "Indian",
+      "Black",
+      "White",
+      "Middle Eastern",
+      "Latino_Hispanic",
+      "Southeast Asian"
+    ],
+    "SEED": 0,
+    "N_FOLDS": 5,
+    "N_BOOTSTRAP": 2000,
+    "ALPHA": 0.05,
+    "CHILD_AGE_THRESHOLD": 18,
+    "MINOR_MAX_AGE": 17,
+    "ADULT_FPR_RANGE": [
+      20,
+      59
+    ],
+    "MINOR_STRATA": [
+      [
+        0,
+        9
+      ],
+      [
+        10,
+        17
+      ]
+    ],
+    "STRATUM_WEIGHTS": {
+      "0-9": 0.7234,
+      "10-17": 0.2766
+    },
+    "FOLD_AGE_BANDS": [
+      [
+        0,
+        9
+      ],
+      [
+        10,
+        17
+      ],
+      [
+        18,
+        19
+      ],
+      [
+        20,
+        39
+      ],
+      [
+        40,
+        59
+      ],
+      [
+        60,
+        200
+      ]
+    ],
+    "SUCCESS": {
+      "small_gap_max": 0.03,
+      "adult_fpr_max": 0.05,
+      "adult_fpr_vs_A": 0.02,
+      "mae_noninferiority_years": 0.5
+    },
+    "HOLM_FAMILY": [
+      "B",
+      "C",
+      "C2",
+      "D",
+      "E_inv",
+      "E_eq",
+      "data_fairface",
+      "data_mixup",
+      "F"
+    ],
+    "AUDIT_CHILD_PROMPTS": [
+      "a photo of a child",
+      "a photo of a kid",
+      "a photo of a baby",
+      "a photo of a teenager"
+    ],
+    "AUDIT_ADULT_PROMPTS": [
+      "a photo of an adult",
+      "a photo of a man",
+      "a photo of a woman"
+    ]
+  },
+  "family": [
+    "B",
+    "C",
+    "C2",
+    "D",
+    "E_inv",
+    "E_eq",
+    "data_fairface",
+    "data_mixup",
+    "F"
+  ],
+  "complete": false,
+  "missing_count_as_p1": [
+    "D",
+    "E_inv",
+    "E_eq",
+    "data_fairface",
+    "data_mixup",
+    "F"
+  ],
+  "A_gap": {
+    "est": 0.10974770882788099,
+    "ci": [
+      0.07696072760411853,
+      0.14220786151593637
+    ]
+  },
+  "models": {
+    "B": {
+      "commit": "cfab668b5f9e864cdd3ab1bf989a72ce43f53947",
+      "gap": {
+        "est": 0.10654571866951612,
+        "ci": [
+          0.07154042213977264,
+          0.14034494653529234
+        ]
+      },
+      "teen_gap": {
+        "est": 0.2682539682539683,
+        "ci": [
+          0.1776154898714763,
+          0.3595689666642778
+        ]
+      },
+      "teen_tpr": {
+        "White": {
+          "est": 0.8,
+          "ci": [
+            0.7715438855436525,
+            0.8262663974704098
+          ]
+        },
+        "Black": {
+          "est": 0.5317460317460317,
+          "ci": [
+            0.4426229508196721,
+            0.6218487394957983
+          ]
+        },
+        "Asian": {
+          "est": 0.7878787878787878,
+          "ci": [
+            0.6817866161616161,
+            0.8823529411764706
+          ]
+        },
+        "Indian": {
+          "est": 0.7254901960784313,
+          "ci": [
+            0.637359943977591,
+            0.8073394495412844
+          ]
+        }
+      },
+      "adult_fpr": {
+        "White": {
+          "est": 0.00788034737857832,
+          "ci": [
+            0.005752522466759054,
+            0.010101334423055405
+          ]
+        },
+        "Black": {
+          "est": 0.007542262678803641,
+          "ci": [
+            0.004952947134602016,
+            0.0105075123151214
+          ]
+        },
+        "Asian": {
+          "est": 0.0037593984962406013,
+          "ci": [
+            0.001423133035162397,
+            0.006545574814788511
+          ]
+        },
+        "Indian": {
+          "est": 0.0016108247422680412,
+          "ci": [
+            0.00032339960597205393,
+            0.003225832474575565
+          ]
+        }
+      },
+      "mae": {
+        "est": 4.624223620448152,
+        "ci": [
+          4.569968305646044,
+          4.679152162498955
+        ]
+      },
+      "paired": {
+        "gap_reduction_A_minus_M": {
+          "est": 0.0032019901583648647,
+          "ci": [
+            -0.018836526605165622,
+            0.025127728569125363
+          ],
+          "p_one_sided": 0.38130934532733635
+        },
+        "mae_increase_M_minus_A": {
+          "est": 0.18060401358019984,
+          "ci": [
+            0.1476519197019338,
+            0.21485412731860606
+          ]
+        },
+        "A_oof_sha256": "308293910fa5269062eb7d466e9aded5f30a45021a32bd019273b44e8b52105f",
+        "note": "unadjusted; Holm across the family in compare_models"
+      },
+      "p_holm": 1.0,
+      "verdict": {
+        "c1_fairer_holm": false,
+        "p_holm": 1.0,
+        "c2_small_gap": false,
+        "c3_adult_fpr": true,
+        "c3_by_group": {
+          "White": true,
+          "Black": true,
+          "Asian": true,
+          "Indian": true
+        },
+        "c4_mae_noninferior": true,
+        "outcome": "neither"
+      }
+    },
+    "C": {
+      "commit": "cfab668b5f9e864cdd3ab1bf989a72ce43f53947",
+      "gap": {
+        "est": 0.08330803673625942,
+        "ci": [
+          0.050199155109741135,
+          0.1148252711388645
+        ]
+      },
+      "teen_gap": {
+        "est": 0.23282539682539682,
+        "ci": [
+          0.1393517645147791,
+          0.32270395874182106
+        ]
+      },
+      "teen_tpr": {
+        "White": {
+          "est": 0.836,
+          "ci": [
+            0.8099529513455774,
+            0.863031914893617
+          ]
+        },
+        "Black": {
+          "est": 0.6031746031746031,
+          "ci": [
+            0.5185051958433253,
+            0.6929151125846111
+          ]
+        },
+        "Asian": {
+          "est": 0.8939393939393939,
+          "ci": [
+            0.8125,
+            0.9636363636363636
+          ]
+        },
+        "Indian": {
+          "est": 0.7647058823529411,
+          "ci": [
+            0.681306990881459,
+            0.8453806502775574
+          ]
+        }
+      },
+      "adult_fpr": {
+        "White": {
+          "est": 0.012705049855258926,
+          "ci": [
+            0.010037220073778606,
+            0.015543179062990221
+          ]
+        },
+        "Black": {
+          "est": 0.013003901170351105,
+          "ci": [
+            0.009615322161600416,
+            0.016619190252493456
+          ]
+        },
+        "Asian": {
+          "est": 0.012218045112781954,
+          "ci": [
+            0.007579166931021627,
+            0.01716861349375927
+          ]
+        },
+        "Indian": {
+          "est": 0.009342783505154639,
+          "ci": [
+            0.006184494216720779,
+            0.012890958734528161
+          ]
+        }
+      },
+      "mae": {
+        "est": 4.613954475094472,
+        "ci": [
+          4.556288090942924,
+          4.670189191511096
+        ]
+      },
+      "paired": {
+        "gap_reduction_A_minus_M": {
+          "est": 0.02643967209162157,
+          "ci": [
+            0.003380287438310525,
+            0.05063069935154778
+          ],
+          "p_one_sided": 0.010994502748625687
+        },
+        "mae_increase_M_minus_A": {
+          "est": 0.17033486822651955,
+          "ci": [
+            0.13365174321005127,
+            0.20414767594495653
+          ]
+        },
+        "A_oof_sha256": "308293910fa5269062eb7d466e9aded5f30a45021a32bd019273b44e8b52105f",
+        "note": "unadjusted; Holm across the family in compare_models"
+      },
+      "p_holm": 0.0879560219890055,
+      "verdict": {
+        "c1_fairer_holm": false,
+        "p_holm": 0.0879560219890055,
+        "c2_small_gap": false,
+        "c3_adult_fpr": true,
+        "c3_by_group": {
+          "White": true,
+          "Black": true,
+          "Asian": true,
+          "Indian": true
+        },
+        "c4_mae_noninferior": true,
+        "outcome": "neither"
+      }
+    },
+    "C2": {
+      "commit": "cfab668b5f9e864cdd3ab1bf989a72ce43f53947",
+      "gap": {
+        "est": 0.01956898433886789,
+        "ci": [
+          -0.03445046222160933,
+          0.07361909538198455
+        ]
+      },
+      "teen_gap": {
+        "est": 0.15974603174603175,
+        "ci": [
+          0.06496696245053526,
+          0.2515419367334871
+        ]
+      },
+      "teen_tpr": {
+        "White": {
+          "est": 0.628,
+          "ci": [
+            0.5933055033770122,
+            0.6612572115384615
+          ]
+        },
+        "Black": {
+          "est": 0.46825396825396826,
+          "ci": [
+            0.38208478513356564,
+            0.5546451914098972
+          ]
+        },
+        "Asian": {
+          "est": 0.696969696969697,
+          "ci": [
+            0.5789268092105263,
+            0.8070344129554654
+          ]
+        },
+        "Indian": {
+          "est": 0.5784313725490197,
+          "ci": [
+            0.4810126582278481,
+            0.6694973565541906
+          ]
+        }
+      },
+      "adult_fpr": {
+        "White": {
+          "est": 0.006593760051463493,
+          "ci": [
+            0.004729260061160381,
+            0.008609560517455253
+          ]
+        },
+        "Black": {
+          "est": 0.020546163849154746,
+          "ci": [
+            0.01613732344332868,
+            0.025419724867006662
+          ]
+        },
+        "Asian": {
+          "est": 0.043703007518796994,
+          "ci": [
+            0.0352161653087837,
+            0.05243450037800777
+          ]
+        },
+        "Indian": {
+          "est": 0.017719072164948453,
+          "ci": [
+            0.013276451342211656,
+            0.022392834293026232
+          ]
+        }
+      },
+      "mae": {
+        "est": 5.342852566511452,
+        "ci": [
+          5.278292083655049,
+          5.40916406394243
+        ]
+      },
+      "paired": {
+        "gap_reduction_A_minus_M": {
+          "est": 0.0901787244890131,
+          "ci": [
+            0.04135257553954528,
+            0.13823948845277675
+          ],
+          "p_one_sided": 0.0004997501249375312
+        },
+        "mae_increase_M_minus_A": {
+          "est": 0.8992329596434994,
+          "ci": [
+            0.850645204627353,
+            0.9482345921611904
+          ]
+        },
+        "A_oof_sha256": "308293910fa5269062eb7d466e9aded5f30a45021a32bd019273b44e8b52105f",
+        "note": "unadjusted; Holm across the family in compare_models"
+      },
+      "p_holm": 0.004497751124437781,
+      "verdict": {
+        "c1_fairer_holm": true,
+        "p_holm": 0.004497751124437781,
+        "c2_small_gap": true,
+        "c3_adult_fpr": false,
+        "c3_by_group": {
+          "White": true,
+          "Black": true,
+          "Asian": false,
+          "Indian": true
+        },
+        "c4_mae_noninferior": false,
+        "outcome": "neither"
+      }
+    }
+  }
+}
