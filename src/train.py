@@ -11,6 +11,16 @@ Methods (CLAUDE.md Decision Log, 2026-11-18):
                of the same age. Ordinary sampling. Group weights start equal (C) or at each
                cell's natural share of the training data (C2, dro_init='natural'; the loss
                then weights samples by q_g / share_g, so eta = 0 is plain training).
+  adv_inv  (E-invariant) adversarial training, GAN-style alternating updates (CLAUDE.md
+               Decision Log, 2026-11-19). The MLP head is split at its hidden layer:
+               encoder = Linear + GELU (z = A's hidden layer, 512 wide), age head = Dropout +
+               Linear. Per batch: (1) adv_steps updates of an adversary MLP that predicts race
+               from z with the encoder fixed, loss CE(race | z); (2) one update of encoder +
+               head with L1(age) + adv_lambda * fairness term, where the term is either
+               -CE(race | z) ('max_ce': maximise the adversary's error) or
+               KL(training race shares || adversary's guess) ('prior': push the guess
+               towards the base rates; Alvi et al. 2018). adv_lambda = 0 is model A exactly
+               (the adversary is initialised from its own RNG stream).
 
 Protocol (docs/SUCCESS_CRITERIA.md §1, src/folds.py):
   for each outer test fold k:
@@ -54,6 +64,15 @@ GRID_C2, FIXED_C2 = GRID_C, {**FIXED_C, "dro_init": "natural"}          # v2 run
 # C2 rerun under v3 (2026-11-18): weights capped to [0.1, 10] x natural share; eta 1 dropped
 GRID_C2_CAP = {**GRID_A, "dro_eta": [0.001, 0.01, 0.1]}
 FIXED_C2_CAP = {**FIXED_C2, "dro_cap": 10.0}
+# E-invariant (revised grid, 2026-11-19): A's MLP settings x adv_lambda x adversarial target.
+# Only hidden 512 (a linear head has no hidden layer to hide race from; A chose 512 in all
+# 5 folds). Fast adversary (lr 1e-2, 5 steps per encoder step): with a slow adversary
+# (lr 1e-3) synthetic tests showed it fooled while race stayed fully readable from z.
+# The leakage probe runs after every refit (src/leakage.py).
+GRID_E = {"hidden": [512], "lr": [1e-3, 3e-4], "weight_decay": [1e-4, 1e-2],
+          "adv_lambda": [0.1, 0.3, 1.0, 3.0], "adv_target": ["max_ce", "prior"]}
+FIXED_E = {**FIXED_A, "method": "adv_inv", "adv_hidden": 128, "adv_lr": 1e-2, "adv_steps": 5,
+           "adv_weight_decay": 1e-4, "leakage_probe": True}
 
 
 def grid_settings(grid):
@@ -84,6 +103,27 @@ def _make_head(dim, hidden, dropout):
         return nn.Linear(dim, 1)
     return nn.Sequential(nn.Linear(dim, hidden), nn.GELU(), nn.Dropout(dropout),
                          nn.Linear(hidden, 1))
+
+
+def _make_adversary(dim, hidden, n_classes):
+    """Race classifier on z (model E). No dropout, so it never draws from the RNG."""
+    import torch.nn as nn
+    if hidden == 0:
+        return nn.Linear(dim, n_classes)
+    return nn.Sequential(nn.Linear(dim, hidden), nn.ReLU(), nn.Linear(hidden, n_classes))
+
+
+def encode(model, X):
+    """z = output of the MLP head's hidden layer (Linear + GELU), as numpy float32."""
+    import torch
+    model.eval()
+    dev = next(model.parameters()).device
+    out = []
+    with torch.no_grad():
+        for b in range(0, len(X), 4096):
+            Xt = torch.from_numpy(np.ascontiguousarray(X[b:b + 4096])).to(dev)
+            out.append(model[:2](Xt).cpu().numpy())
+    return np.concatenate(out).astype(np.float32)
 
 
 # ── group bookkeeping for B and C ────────────────────────────────────────────
@@ -140,7 +180,26 @@ def fit_head(Xtr, ytr, s, epochs, seed, device, Xval=None, gtr=None, atr=None):
     def predict_fn(Xn):
         return predict(model, Xn) * y_sd + y_mu
 
+    if s["hidden"] > 0:   # hidden layer z, for the leakage probe
+        predict_fn.encode = lambda Xn: encode(model, Xn)
     info = {"method": method}
+    if method == "adv_inv":
+        assert s["hidden"] > 0, "E needs a hidden layer"
+        classes = sorted(set(np.asarray(gtr).tolist()))
+        rid = torch.from_numpy(np.searchsorted(classes, np.asarray(gtr))).to(device)
+        with torch.random.fork_rng(devices=[]):   # keep A's RNG stream untouched
+            torch.manual_seed(seed + 7919)
+            adv = _make_adversary(s["hidden"], s["adv_hidden"], len(classes))
+        adv = adv.to(device)
+        opt_adv = torch.optim.AdamW(adv.parameters(), lr=s["adv_lr"],
+                                    weight_decay=s["adv_weight_decay"])
+        ce_fn = torch.nn.CrossEntropyLoss()
+        lam, n_adv = float(s["adv_lambda"]), int(s["adv_steps"])
+        target = s.get("adv_target", "max_ce")
+        log_prior = torch.log(torch.bincount(rid, minlength=len(classes)).float() / len(rid))
+        enc, head = model[:2], model[2:]
+        nC = len(classes)
+        hist = {"adv_bal_acc": [], "adv_ce": []}
     if method == "balanced":
         probs = torch.from_numpy(balanced_probs(gtr, atr))
     if method == "dro":
@@ -168,8 +227,36 @@ def fit_head(Xtr, ytr, s, epochs, seed, device, Xval=None, gtr=None, atr=None):
             order = torch.multinomial(probs, len(X), replacement=True, generator=g)
         else:
             order = torch.randperm(len(X), generator=g)
+        if method == "adv_inv":   # adversary's guesses on z during this epoch (after its step)
+            conf = torch.zeros(nC, nC, dtype=torch.long, device=device)
+            ce_sum = 0.0
         for b in order.split(s["batch_size"]):
             b = b.to(device)
+            if method == "adv_inv":
+                zb = enc(X[b])
+                zd = zb.detach()
+                for _ in range(n_adv):            # step 1: adversary, encoder fixed
+                    opt_adv.zero_grad()
+                    ce_fn(adv(zd), rid[b]).backward()
+                    opt_adv.step()
+                opt.zero_grad()                   # step 2: encoder + age head
+                out = head(zb).squeeze(1)
+                logits = adv(zb)
+                ce = ce_fn(logits, rid[b])
+                loss = loss_fn(out, y[b])
+                if lam != 0 and target == "max_ce":     # maximise the adversary's error
+                    loss = loss - lam * ce
+                elif lam != 0:   # 'prior': adversary's guess -> training base rates (Alvi 2018)
+                    logp = torch.log_softmax(logits, 1)
+                    kl = (log_prior.exp() * (log_prior - logp)).sum(1).mean()
+                    loss = loss + lam * kl
+                loss.backward()                   # adv grads are cleared before its next step
+                opt.step()
+                with torch.no_grad():
+                    conf += torch.bincount(rid[b] * nC + logits.argmax(1),
+                                           minlength=nC * nC).view(nC, nC)
+                    ce_sum += float(ce) * len(b)
+                continue
             opt.zero_grad()
             out = model(X[b]).squeeze(1)
             if method == "dro":
@@ -210,8 +297,16 @@ def fit_head(Xtr, ytr, s, epochs, seed, device, Xval=None, gtr=None, atr=None):
             else:
                 loss_fn(out, y[b]).backward()
             opt.step()
+        if method == "adv_inv":
+            c = conf.cpu().numpy()
+            hist["adv_bal_acc"].append(float(np.mean(np.diag(c) / np.maximum(c.sum(1), 1))))
+            hist["adv_ce"].append(ce_sum / len(X))
         if Xv is not None:
             val_preds.append(predict_fn(Xv))
+    if method == "adv_inv":
+        info.update({"adv_classes": classes, "adv_chance_bal_acc": 1.0 / nC,
+                     "adv_bal_acc_by_epoch": hist["adv_bal_acc"],
+                     "adv_ce_by_epoch": hist["adv_ce"]})
     if method == "dro":
         if cap is not None:   # capped: weight proportional to share x e^z
             qt = share * torch.exp(z)
@@ -347,13 +442,38 @@ def _reference_A(rA, X, y, groups, tr_in, va, st, seed, k, device):
     return ref
 
 
+def _leakage_fold(X, y, groups, tr_all, te, st, predict_fn, recA, seed, k, device, probe_out):
+    """Fit the race probe on the training folds, predict test fold k, for 3 representations."""
+    from src.leakage import fit_predict_probe
+    Xtr, Xte = st(X[tr_all]), st(X[te])
+    sA = {**FIXED_A, **recA["chosen"]}
+    pfA, _, _ = fit_head(Xtr, y[tr_all], sA, recA["epochs"], seed + 1000 * k, device)
+    maeA = float(np.abs(pfA(Xte) - y[te]).mean())
+    reps = {"model": (predict_fn.encode(Xtr), predict_fn.encode(Xte)),
+            "A": (pfA.encode(Xtr), pfA.encode(Xte)),
+            "clip_raw": (Xtr, Xte)}
+    out = {"A_refit_test_mae": maeA}
+    if recA.get("test_mae") is not None:
+        out["A_refit_test_mae_diff_vs_A_record"] = maeA - recA["test_mae"]
+    for name, (Ztr, Zte) in reps.items():
+        p = fit_predict_probe(Ztr, groups[tr_all], Zte, seed)
+        if probe_out is not None:
+            probe_out.setdefault(name, np.full(len(y), None, dtype=object))[te] = p
+        out[f"bal_acc_{name}"] = float(np.mean([np.mean(p[groups[te] == c] == c)
+                                                for c in np.unique(groups[tr_all])]))
+    return out
+
+
 def oof_predictions(X, y, folds, grid=None, fixed=None, device="cpu", seed=None, log=print,
-                    groups=None, select="mae", ref_A=None):
+                    groups=None, select="mae", ref_A=None, probe_out=None):
     """Out-of-fold predictions for every row, plus a per-fold tuning record.
 
     X: (n, d) raw embeddings; y: true ages; folds: int array of fold ids (0..K-1);
     groups: race per row (needed by 'balanced', 'dro' and the 'worst_group' rules);
     ref_A: model A's per-fold record (chosen setting, epochs) for 'worst_group_v2'.
+    probe_out: dict filled with out-of-fold race predictions of the leakage probe
+    (fixed['leakage_probe']) on z of this model, z of model A (A's chosen setting and
+    epochs refit on the same folds and seed, i.e. A's own refit) and the raw CLIP inputs.
     """
     grid, fixed = grid or GRID_A, fixed or FIXED_A
     seed = C.SEED if seed is None else seed
@@ -399,6 +519,10 @@ def oof_predictions(X, y, folds, grid=None, fixed=None, device="cpu", seed=None,
                                        seed + 1000 * k, device, None, gsub(tr_all), y[tr_all])
         pred[te] = predict_fn(st(X[te]))
         test_mae = float(np.abs(pred[te] - y[te]).mean())
+        probe_rec = None
+        if fixed.get("leakage_probe"):
+            probe_rec = _leakage_fold(X, y, groups, tr_all, te, st, predict_fn, ref_A[k], seed,
+                                      k, device, probe_out)
         rec = {"test_fold": k, "inner_val_fold": v, "select": select, "chosen": win["setting"],
                "epochs": win["best_epoch"], "inner_val_mae": win["val_mae"],
                "test_mae": test_mae, "trials": trials, "refit_info": info,
@@ -406,6 +530,8 @@ def oof_predictions(X, y, folds, grid=None, fixed=None, device="cpu", seed=None,
         if select != "mae":
             rec["inner_val_worst_group_tpr"] = win["val_worst_group_tpr"]
             rec["inner_val_feasible"] = win["val_feasible"]
+        if probe_rec is not None:
+            rec["leakage_probe"] = probe_rec
         if ref is not None:
             rec["reference_A"] = ref
             rec["n_trials_feasible_at_best"] = int(sum(t["val_feasible"] for t in trials))

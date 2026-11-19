@@ -23,8 +23,9 @@ from _common import REPO, atomic_copy, sha256
 from configs import config as C
 from src import metrics as M
 from src.provenance import write_result
-from src.train import (FIXED_A, FIXED_B, FIXED_C, FIXED_C2_CAP, GRID_A, GRID_B, GRID_C,
-                       GRID_C2_CAP, oof_predictions)
+from src.leakage import summarise as leakage_summary
+from src.train import (FIXED_A, FIXED_B, FIXED_C, FIXED_C2_CAP, FIXED_E, GRID_A, GRID_B, GRID_C,
+                       GRID_C2_CAP, GRID_E, oof_predictions)
 
 MODELS = {
     "A": {"grid": GRID_A, "fixed": FIXED_A, "select": "mae",
@@ -39,14 +40,19 @@ MODELS = {
     "C2": {"grid": GRID_C2_CAP, "fixed": FIXED_C2_CAP, "select": "worst_group_v3",
            "desc": "as C, but group weights start at each cell's natural share "
                    "(eta = 0 equals plain training), capped to 0.1-10x that share"},
+    # E-invariant (2026-11-19): GAN-style alternating updates, adversary predicts race from z
+    "E_inv": {"grid": GRID_E, "fixed": FIXED_E, "select": "worst_group_v3",
+              "desc": "adversarial: encoder + age head trained with L1(age) + lambda * "
+                      "(-CE(race | z) or KL(base rates || adversary)) against a race "
+                      "adversary updated in alternation (5 steps, lr 1e-2); leakage probe"},
 }
 
 
 def load_A_record():
     """Model A's per-fold tuning record from results/models/A.json on Drive."""
     man = json.loads((Path(C.DRIVE_ROOT) / "results" / "models" / "A.json").read_text())
-    return [{"chosen": f["chosen"], "epochs": f["epochs"], "inner_val_mae": f["inner_val_mae"]}
-            for f in man["folds"]]
+    return [{"chosen": f["chosen"], "epochs": f["epochs"], "inner_val_mae": f["inner_val_mae"],
+             "test_mae": f["test_mae"]} for f in man["folds"]]
 
 
 def load_A_oof(ids):
@@ -104,8 +110,10 @@ def main():
 
     ids, X, ages, groups, folds, hashes = load_inputs()
     ref_A = load_A_record() if spec["select"] in ("worst_group_v2", "worst_group_v3") else None
+    probe_out = {} if spec["fixed"].get("leakage_probe") else None
     pred, record = oof_predictions(X, ages, folds, spec["grid"], spec["fixed"], device,
-                                   groups=groups, select=spec["select"], ref_A=ref_A)
+                                   groups=groups, select=spec["select"], ref_A=ref_A,
+                                   probe_out=probe_out)
 
     oof = pd.DataFrame({"id": ids, "fold": folds, "pred_age": pred})
     dst = Path(C.PER_IMAGE_DIR) / f"oof__{a.model}__seed{C.SEED}.csv"
@@ -124,6 +132,8 @@ def main():
                "torch": torch.__version__, "folds": record, "report": rep,
                "oof_file": {"drive_path": str(dst.relative_to(C.DRIVE_ROOT)), "sha256": digest},
                "seconds": round(time.time() - t0, 1)}
+    if probe_out is not None:
+        payload["leakage_probe"] = leakage_summary(probe_out, groups)
     if a.model == "A":
         payload["a_self_check"] = M.a_self_check(rep)
     else:
@@ -145,6 +155,11 @@ def main():
         print(f"  vs A: gap reduction {gr['est']:.3f} [{gr['ci'][0]:.3f}, {gr['ci'][1]:.3f}] "
               f"p(one-sided, unadjusted) {gr['p_one_sided']:.4f}; MAE change {mi['est']:+.2f} "
               f"[{mi['ci'][0]:+.2f}, {mi['ci'][1]:+.2f}]")
+    if probe_out is not None:
+        lp = payload["leakage_probe"]
+        print(f"  leakage probe, balanced accuracy (chance {lp['chance']:.2f}):")
+        for n, r in lp["bal_acc"].items():
+            print(f"    {n:9s} {r['est']:.3f} [{r['ci'][0]:.3f}, {r['ci'][1]:.3f}]")
     print("->", dst, "\n->", res)
 
 

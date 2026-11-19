@@ -18,6 +18,8 @@ Written 2026-11-10, before any code or training. The master copy of the narrativ
 
 ## Steps
 
+> **Class scope (2026-11-19, CLAUDE.md Decision Log):** the term project tests one question: does a fairness fix need to act inside the transformer, or is training on frozen CLIP features enough? Conditions: A (baseline), E-invariant (adversarial), F1 (LoRA in CLIP's last ViT blocks), F2 (F1 + adversary). B, C, C2 are done and kept as brief context (reported with unadjusted p, not tested). D, E-equal-errors and the data variants are deferred to the paper. Holm family: E_inv, F1, F2.
+
 1. Repository set-up (this repo). Embeddings and per-image data stay on Drive; the CLIP loader must use QuickGELU.
 2. Write the success criteria and evaluation plan (`docs/SUCCESS_CRITERIA.md`) before any training.
 3. Extract CLIP ViT-L/14 image embeddings on Colab: UTKFace, plus FairFace's training split for the extra-data variant.
@@ -36,7 +38,7 @@ Written 2026-11-10, before any code or training. The master copy of the narrativ
 | B. Balanced sampling | Every group × age band seen equally often | Is it caused by Black teenagers being rare? |
 | C. Group DRO | Minimise the worst group's loss (Sagawa et al., 2020) | Does focusing on the worst group help? |
 | D. Fairness penalty | Loss + λ × spread of mean age error across groups | How much accuracy does fairness cost? |
-| E. Adversarial (GAN-style) | Gradient reversal; invariant-representation and equal-errors versions; leakage probe | Can an adversary remove race from the decision? |
+| E. Adversarial (GAN-style) | E-invariant: alternating updates of a race adversary on z (A's 512 hidden layer) and the encoder + age head (L1 + λ × fairness term; max-error or base-rate target); leakage probe. Equal-errors version deferred | Can an adversary remove race from the decision? |
 | Data variants | FairFace training split (interval loss on age bins); within-group mixup | Is it a data-quantity problem? |
 | F. Fine-tuned CLIP | LoRA on CLIP's last vision layers + best method from A to E | Does changing CLIP itself close the gap the frozen models leave? |
 

@@ -101,10 +101,14 @@ SUCCESS = {"small_gap_max": 0.03, "adult_fpr_max": 0.05, "adult_fpr_vs_A": 0.02,
            "mae_noninferiority_years": 0.5}
 # Tuning rule v3 (FINAL, 2026-11-18): levelling-down guard used in model selection only
 TUNING = {"tpr_drop_max": 0.02}
-# Holm family for criterion 1 (§4: B, C, chosen D, E-invariant, E-equal-errors, each data
-# variant (FairFace extra data, within-group mixup; PLAN.md) and F; C2 added 2026-11-18). Until all have run,
-# missing members count as p = 1, which is conservative ('interim').
-HOLM_FAMILY = ["B", "C", "C2", "D", "E_inv", "E_eq", "data_fairface", "data_mixup", "F"]
+# Holm family for criterion 1. Was (§4 as approved, + C2 on 2026-11-18): B, C, C2, D, E_inv,
+# E_eq, data_fairface, data_mixup, F. Since 2026-11-19 = the class conditions tested against A
+# (proposal: A, E, F1, F2). B, C, C2 are earlier results kept as context (reported with
+# unadjusted p, not part of the family); D, E_eq, data variants deferred to the paper.
+# Until all members have run, missing ones count as p = 1, which is conservative ('interim').
+HOLM_FAMILY = ["E_inv", "F1", "F2"]
+CONTEXT_MODELS = ["B", "C", "C2"]
+HOLM_FAMILY_V1 = ["B", "C", "C2", "D", "E_inv", "E_eq", "data_fairface", "data_mixup", "F"]
 
 # Audit D4 prompts: used ONLY to cross-check our embeddings against Phase 1 CLIP L/14 scores
 AUDIT_CHILD_PROMPTS = ["a photo of a child", "a photo of a kid", "a photo of a baby",
