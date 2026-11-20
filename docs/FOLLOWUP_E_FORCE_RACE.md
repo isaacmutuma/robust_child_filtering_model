@@ -11,10 +11,10 @@ So E answered "can race be removed **within the cost limits**?" (no). It did not
 ## Three sentences (course rule)
 
 1. **What I wonder:** if adversarial training is pushed hard enough to remove race from the age model's representation, ignoring the cost limits, does the White − Black gap at 18 shrink?
-2. **What I expect:** see Prediction below (to be confirmed by Isaac before the run).
+2. **What I expect:** see Prediction below.
 3. **What I change and what I keep fixed:** I change only the adversarial target and its weight λ, in a dose-response sweep with no tuning rule. Everything else is fixed: UTKFace embeddings, the 5 folds, E's architecture (z = 512-wide hidden layer, adversary MLP(128), lr 1e-2, 5 adversary steps per encoder step), learning rate 3e-4, weight decay 1e-4, 60 epochs (the full training budget), seed 0 + 1000·fold, evaluation and bootstrap resamples as for every model.
 
-## Prediction (Claude's draft; Isaac to confirm or replace before running)
+## Prediction (Isaac's, adopted 2026-11-20 before the run; first drafted by Claude)
 
 As λ rises with the base-rate target, the probe's balanced accuracy falls well below A's 0.82, and age error rises past the 0.5-year limit. The gap shrinks much less than race leakage does, and the Black − White age over-estimation (A: +1.9 years) stays clearly above zero, because the cues that make Black teenagers look older are age cues in CLIP's embedding, not a separate race signal the head can drop. Confidence: medium.
 
@@ -23,7 +23,7 @@ As λ rises with the base-rate target, the probe's balanced accuracy falls well 
 - **Case A (probe drops, gap closes, MAE jumps):** removing race does fix the racial gap, showing that the +0.5-year MAE budget was too tight to allow debiasing on frozen CLIP.
 - **Case B (probe drops, gap stays wide, MAE jumps):** even when age accuracy is sacrificed to force race out of z, the over-estimation of Black teens does not go away, pointing to frozen CLIP embeddings that tie age cues to race, so that unfreezing CLIP (F1, F2) is the path to test next.
 
-Claude's draft prediction above expects Case B. Caveats agreed for the write-up: Case B shows that removing *linearly readable* race from the head's z does not fix the over-estimation; it does not rule out every frozen-feature method (D was deferred), and it does not show that F will work. Outcomes outside A and B (race never removed; gap closed by lowering White TPR) are read with the rules below.
+The prediction above expects Case B. Caveats agreed for the write-up: Case B shows that removing *linearly readable* race from the head's z does not fix the over-estimation; it does not rule out every frozen-feature method (D was deferred), and it does not show that F will work. Outcomes outside A and B (race never removed; gap closed by lowering White TPR) are read with the rules below.
 
 ## Design
 
