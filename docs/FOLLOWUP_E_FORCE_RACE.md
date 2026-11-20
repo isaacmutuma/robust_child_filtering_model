@@ -53,3 +53,25 @@ The prediction above expects Case B. Caveats agreed for the write-up: Case B sho
 ## Ethics and data
 
 Embeddings and folds only (no images opened). Per-image predictions stay on Drive; the committed JSON is aggregate.
+
+## Result (added 2026-11-20, after the run; nothing above was changed)
+
+Run: `results/followups/E_force_race.json`, commit d205612 (clean), T4, 3,309 s; inputs and A's OOF hash = model A's.
+
+| Setting | Probe (bal. acc.) | Gap (95% CI) | Reduction vs A | MAE vs A | B−W age error (years) | Teen TPR B / W |
+|---|---|---|---|---|---|---|
+| control (λ 0) | 0.805 | 0.116 (0.083 to 0.149) | −0.007 | +0.14 | +2.16 | 0.44 / 0.79 |
+| prior 0.1 | 0.819 | 0.108 | +0.002 | +0.13 | +1.90 | 0.47 / 0.78 |
+| prior 0.3 | 0.818 | 0.113 | −0.003 | +0.07 | +2.03 | 0.45 / 0.77 |
+| prior 1 | 0.820 | 0.120 | −0.010 | +0.35 | +1.90 | 0.38 / 0.72 |
+| prior 3 | 0.821 | 0.096 (0.061 to 0.130) | +0.014 (−0.010 to 0.037) | +0.69 | +2.08 | 0.44 / 0.73 |
+| prior 10 | 0.819 | 0.101 (0.063 to 0.139) | +0.009 (−0.023 to 0.038) | +0.96 | +1.67 (0.77 to 2.72) | 0.40 / 0.65 |
+| max_ce 1 | 0.819 | 0.109 | +0.001 | −0.10 | +1.97 | 0.47 / 0.78 |
+| max_ce 10 | 0.822 | 0.117 | −0.007 | +0.11 | +1.90 | 0.44 / 0.76 |
+
+Reference: A's z 0.819, raw CLIP 0.823 (E run); A's B−W age error +1.90 (1.18 to 2.71).
+
+**Reading (rules fixed above):** no setting removed race (probe 0.805 to 0.822 against the 0.40 threshold, at every λ up to 10 and with both targets). The third rule applies: *adversarial training on a frozen head cannot remove race from z at any tested strength.* Neither Case A nor Case B occurred, because both require the probe to drop, so the question "does removing race close the gap?" is not answered by this sweep. During training the adversary itself stayed at about 0.50 balanced accuracy with the base-rate target and was driven to 0.20 with the max-error target, while the fresh probe read 0.82 in both: the adversary is fought, race stays readable.
+
+**Against the prediction:** probe falls well below 0.82, *wrong*; MAE past +0.5 years, *right* for base-rate λ 3 and 10 (+0.69, +0.96); B−W over-estimation stays clearly above 0, *right* (+1.67 to +2.16, every CI above 0); gap shrinks far less than leakage, *not testable* (leakage did not shrink). No gap reduction is significant (all CIs include 0, vs A and vs the control). At λ 10 detection falls for both groups (teen TPR White 0.79 to 0.65, Black 0.44 to 0.40): any narrowing there is levelling down.
+
