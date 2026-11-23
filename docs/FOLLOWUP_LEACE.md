@@ -14,9 +14,13 @@ LEACE (least-squares concept erasure; Belrose et al., NeurIPS 2023) answers this
 2. **What I expect:** see Prediction below.
 3. **What I change and what I keep fixed:** I change only the input: LEACE, fitted on each fold's training rows, is applied to the standardised embeddings. Everything else is model A's exact procedure: the same 8-setting grid, selection by inner-fold MAE, refit on 4 folds, seed, folds and evaluation.
 
-## Prediction (Claude's draft; on 2026-11-23 Isaac gave the question above but has not yet stated which outcome he expects)
+## Prediction (Isaac's, 2026-11-23, before the run)
 
-LEACE removes linear race information completely (linear probe on the erased embeddings near 0.20), but a non-linear probe still reads race well above chance. The gap narrows by a few points at most and does not close; the Black − White over-estimation shrinks but stays above zero; age error rises by less than 0.5 years in the age-band variant. Reason: the cues that make Black teenagers look older are partly non-linear and partly shared with age cues, which a linear edit that keeps age cannot remove. Confidence: low to medium.
+**The gap stays wide.** Removing linear race information barely moves the White − Black gap, and Black teenagers are still over-estimated; so race, as a linear signal in the embedding, is not the culprit, and the cause sits in how CLIP encodes age.
+
+Isaac's reasoning for the test: if the covariance between the embeddings and race is zeroed and the White − Black gap shrinks with an acceptable MAE (within the +0.5-year limit of the success criteria), race was the real culprit; if not, it was not. (LEACE removes linear race information only; the MLP probe shows what non-linear race information is left, and the conclusion is limited accordingly.)
+
+Earlier draft by Claude, for the record: linear probe near 0.20 but MLP probe well above chance; gap narrows by a few points at most; over-estimation shrinks but stays above 0; age error below +0.5 years in the band variant.
 
 ## Design
 
