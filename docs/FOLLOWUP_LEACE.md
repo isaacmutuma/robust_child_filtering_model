@@ -16,11 +16,11 @@ LEACE (least-squares concept erasure; Belrose et al., NeurIPS 2023) answers this
 
 ## Prediction (Isaac's, 2026-11-23, before the run)
 
-**The gap stays wide.** Removing linear race information barely moves the White − Black gap, and Black teenagers are still over-estimated; so race, as a linear signal in the embedding, is not the culprit, and the cause sits in how CLIP encodes age.
+**The gap closes.** Once linear race information is removed from the embeddings, the White − Black gap falls to about 3 points or less with age error within +0.5 years of model A: linear race information was the real culprit.
 
 Isaac's reasoning for the test: if the covariance between the embeddings and race is zeroed and the White − Black gap shrinks with an acceptable MAE (within the +0.5-year limit of the success criteria), race was the real culprit; if not, it was not. (LEACE removes linear race information only; the MLP probe shows what non-linear race information is left, and the conclusion is limited accordingly.)
 
-Earlier draft by Claude, for the record: linear probe near 0.20 but MLP probe well above chance; gap narrows by a few points at most; over-estimation shrinks but stays above 0; age error below +0.5 years in the band variant.
+Record of how this was set: on 2026-11-23 Isaac first chose "gap stays wide" by accident in a multiple-choice question; it was committed (1a8c570) and replaced at his request by "gap closes" minutes later, before any run. Claude's earlier draft (for the record): linear probe near 0.20 but MLP probe well above chance; gap narrows by a few points at most; over-estimation shrinks but stays above 0; age error below +0.5 years in the band variant.
 
 ## Design
 
