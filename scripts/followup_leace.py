@@ -37,8 +37,11 @@ def mlp_probe(Ztr, gtr, Zte, seed=0):
     sc = StandardScaler().fit(Ztr)
     clf = MLPClassifier(hidden_layer_sizes=(256,), early_stopping=True, max_iter=200,
                         random_state=seed)
-    clf.fit(sc.transform(Ztr), np.asarray(gtr))
-    return clf.predict(sc.transform(Zte))
+    # integer class codes: newer scikit-learn's early-stopping score calls np.isnan on the
+    # predictions, which fails for string labels (seen on Colab 2026-11-23)
+    classes, codes = np.unique(np.asarray(gtr), return_inverse=True)
+    clf.fit(sc.transform(Ztr), codes)
+    return classes[clf.predict(sc.transform(Zte))]
 
 
 def probes(X, y, groups, folds, conditional, record, device, seed, log=print):
