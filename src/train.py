@@ -465,7 +465,7 @@ def _leakage_fold(X, y, groups, tr_all, te, st, predict_fn, recA, seed, k, devic
 
 
 def oof_predictions(X, y, folds, grid=None, fixed=None, device="cpu", seed=None, log=print,
-                    groups=None, select="mae", ref_A=None, probe_out=None):
+                    groups=None, select="mae", ref_A=None, probe_out=None, prep=None):
     """Out-of-fold predictions for every row, plus a per-fold tuning record.
 
     X: (n, d) raw embeddings; y: true ages; folds: int array of fold ids (0..K-1);
@@ -474,6 +474,8 @@ def oof_predictions(X, y, folds, grid=None, fixed=None, device="cpu", seed=None,
     probe_out: dict filled with out-of-fold race predictions of the leakage probe
     (fixed['leakage_probe']) on z of this model, z of model A (A's chosen setting and
     epochs refit on the same folds and seed, i.e. A's own refit) and the raw CLIP inputs.
+    prep: optional factory prep(X, groups, ages) -> fitted input transform (default
+    Standardiser), fitted on the training rows only; used for follow-up 2 (LEACE).
     """
     grid, fixed = grid or GRID_A, fixed or FIXED_A
     seed = C.SEED if seed is None else seed
@@ -485,7 +487,9 @@ def oof_predictions(X, y, folds, grid=None, fixed=None, device="cpu", seed=None,
         t0, v = time.time(), inner_val_fold(k, K)
         tr_in, va, tr_all, te = (folds != k) & (folds != v), folds == v, folds != k, folds == k
         gsub = (lambda m: groups[m]) if groups is not None else (lambda m: None)
-        st = Standardiser().fit(X[tr_in])
+        fit_prep = (lambda m: Standardiser().fit(X[m])) if prep is None else \
+            (lambda m: prep(X[m], None if groups is None else groups[m], y[m]))
+        st = fit_prep(tr_in)
         ref = None
         if select in ("worst_group_v2", "worst_group_v3"):
             ref = _reference_A(ref_A[k], X, y, groups, tr_in, va, st, seed, k, device)
@@ -514,7 +518,7 @@ def oof_predictions(X, y, folds, grid=None, fixed=None, device="cpu", seed=None,
         for t in trials:
             t.pop("_key")
         s = {**fixed, **win["setting"]}
-        st = Standardiser().fit(X[tr_all])
+        st = fit_prep(tr_all)
         predict_fn, _, info = fit_head(st(X[tr_all]), y[tr_all], s, win["best_epoch"],
                                        seed + 1000 * k, device, None, gsub(tr_all), y[tr_all])
         pred[te] = predict_fn(st(X[te]))
