@@ -48,3 +48,27 @@ Per variant: LEACE fitted on the training rows only, inside every inner and oute
 ## Ethics and data
 
 Embeddings and folds only (no images opened). Per-image predictions stay on Drive; the committed JSON is aggregate.
+
+## Result (added 2026-11-23, after the run; nothing above was changed)
+
+Run: `results/followups/LEACE.json`, commit 10c9524 (clean; includes the MLP-probe label fix after a first run crashed in the probes), T4, 1,357 s; inputs and A's OOF hash = model A's. Checks: LEACE rank 4 in every fold; train cross-covariance with race after erasure 1e-5 (plain) and 0.047 (band, which keeps the age-mix part by design); head refit reproduces the out-of-fold test MAE exactly.
+
+| | A | LEACE band (primary) | LEACE plain |
+|---|---|---|---|
+| Linear probe on the erased inputs (chance 0.20) | 0.823 (plain inputs) | **0.200** | **0.200** |
+| MLP probe on the erased inputs | 0.837 (plain inputs) | 0.805 | 0.816 |
+| Linear probe on the head's hidden layer | 0.819 | 0.600 | 0.687 |
+| Gap (95% CI) | 0.110 (0.077 to 0.142) | 0.100 (0.067 to 0.132) | 0.103 (0.070 to 0.134) |
+| Reduction vs A | | +0.009 (−0.011 to 0.029), p 0.17 | +0.007 (−0.010 to 0.025), p 0.21 |
+| MAE vs A | 4.44 | −0.03 (−0.06 to −0.01) | +0.23 (0.19 to 0.26) |
+| Mean age error of minors, White / Black (years) | +1.00 / +2.90 | +0.04 / +1.97 | +0.52 / +1.76 |
+| B − W age error (95% CI) | +1.90 (1.18 to 2.71) | +1.94 (1.22 to 2.74) | +1.24 (0.48 to 2.08) |
+| Teen TPR, Black / White | 0.476 / 0.809 | 0.548 / 0.825 | 0.500 / 0.805 |
+| Highest adult FPR | 0.006 | 0.005 | 0.007 |
+
+**Reading (rules fixed above).** Linear race information was removed (linear probe exactly at chance, 0.200, in both variants), so the "race removed" condition was met. The gap did not close: it fell by 0.9 points (CI includes 0) to 10.0 points, far from the 3-point threshold, and in the primary variant the Black − White over-estimation was unchanged (+1.94 vs +1.90 years). This is the plan's Case B: removing linear race information does not fix the over-estimation. Two limits apply, as the plan anticipated: race stays readable non-linearly (MLP probe 0.81 on the erased inputs, against 0.84 before), and the MLP age head partly rebuilds it (linear probe on its hidden layer 0.60). So the conclusion is about *linear* race information; whether the remaining non-linear race signal or CLIP's age cues carry the gap is not separated by this test.
+
+A side finding: band LEACE lowered every group's over-estimation of minors by about 1 year (White +1.00 to +0.04, Black +2.90 to +1.97), raised teen detection for both groups and slightly improved MAE, but left the difference between groups unchanged.
+
+**Against Isaac's prediction ("the gap closes, linear race was the culprit"):** linear race was removed, but the gap did not close (10.0 points, CI 6.7 to 13.2) and the over-estimation gap stayed at +1.9 years. The prediction was wrong.
+

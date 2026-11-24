@@ -1,0 +1,1919 @@
+{
+  "created_utc": "2026-11-23T12:56:58+00:00",
+  "git": {
+    "commit": "10c95244a3ce34aef72d9db0c4014582a9f8f66a",
+    "dirty": false,
+    "source": "git"
+  },
+  "config": {
+    "ENV": "colab",
+    "REPO_DIR": "/content/robust_child_filtering_model",
+    "DRIVE": "/content/drive/MyDrive",
+    "AUDIT_DRIVE": "/content/drive/MyDrive/child-detection-audit",
+    "DRIVE_ROOT": "/content/drive/MyDrive/robust_child_filtering_model",
+    "DATA_DIR": "/content/data",
+    "HF_CACHE_DIR": "/content/hf_cache",
+    "RAW_DIR": "/content/drive/MyDrive/child-detection-audit/raw",
+    "AUDIT_PER_IMAGE_DIR": "/content/drive/MyDrive/child-detection-audit/per_image",
+    "EMB_DIR": "/content/drive/MyDrive/robust_child_filtering_model/embeddings",
+    "FOLDS_DIR": "/content/drive/MyDrive/robust_child_filtering_model/folds",
+    "PER_IMAGE_DIR": "/content/drive/MyDrive/robust_child_filtering_model/per_image",
+    "RESULTS_DIR": "/content/robust_child_filtering_model/results",
+    "FIGURES_DIR": "/content/robust_child_filtering_model/figures",
+    "SOURCES": {
+      "utkface": {
+        "hf_repo": "py97/UTKFace-Cropped",
+        "revision": "e80f21fb21fa3631380c3cb634b79be3ac2f4cba",
+        "file": "UTKFace.tar.gz",
+        "sha256": "2c0655397b498e81b82d685ee74bee8c2e4364a5897caf3afec6ea48929024a7",
+        "n_files": 23708,
+        "n_records": 23705
+      },
+      "fairface_train": {
+        "hf_repo": "mutuma00/FairFace",
+        "revision": "e8e670de53803408a4eaebf503d0a35749907f54",
+        "repo_type": "dataset",
+        "files": {
+          "0.25/train-00000-of-00002-d405faba4f4b9b85.parquet": "acebfc4a735050d0ee618b3c690ad91e1b11bcc25151f398f06990bc15e99d06",
+          "0.25/train-00001-of-00002-dd3cb68164727418.parquet": "e8ec1fb27f0745c166b218708bf4923811cd41d85cb998f09f8f624b0eb40326"
+        },
+        "licence": "CC BY 4.0"
+      }
+    },
+    "CLIP_ARCH": "ViT-L-14",
+    "CLIP_WEIGHTS": {
+      "hf_repo": "timm/vit_large_patch14_clip_224.openai",
+      "revision": "18d0535469bb561bf468d76c1d73aa35156c922b",
+      "file": "open_clip_model.safetensors",
+      "sha256": "9ce2e8a8ebfff3793d7d375ad6d3c35cb9aebf3de7ace0fc7308accab7cd207e"
+    },
+    "EMB_TAG": "clip_vitl14",
+    "UTKFACE_RACES": {
+      "0": "White",
+      "1": "Black",
+      "2": "Asian",
+      "3": "Indian",
+      "4": "Others"
+    },
+    "TESTED_GROUPS": [
+      "White",
+      "Black",
+      "Asian",
+      "Indian"
+    ],
+    "PRIMARY_CONTRAST": [
+      "White",
+      "Black"
+    ],
+    "FAIRFACE_AGE_BINS": [
+      "0-2",
+      "3-9",
+      "10-19",
+      "20-29",
+      "30-39",
+      "40-49",
+      "50-59",
+      "60-69",
+      "more than 70"
+    ],
+    "FAIRFACE_GENDERS": [
+      "Male",
+      "Female"
+    ],
+    "FAIRFACE_RACES": [
+      "East Asian",
+      "Indian",
+      "Black",
+      "White",
+      "Middle Eastern",
+      "Latino_Hispanic",
+      "Southeast Asian"
+    ],
+    "SEED": 0,
+    "N_FOLDS": 5,
+    "N_BOOTSTRAP": 2000,
+    "ALPHA": 0.05,
+    "CHILD_AGE_THRESHOLD": 18,
+    "MINOR_MAX_AGE": 17,
+    "ADULT_FPR_RANGE": [
+      20,
+      59
+    ],
+    "MINOR_STRATA": [
+      [
+        0,
+        9
+      ],
+      [
+        10,
+        17
+      ]
+    ],
+    "STRATUM_WEIGHTS": {
+      "0-9": 0.7234,
+      "10-17": 0.2766
+    },
+    "FOLD_AGE_BANDS": [
+      [
+        0,
+        9
+      ],
+      [
+        10,
+        17
+      ],
+      [
+        18,
+        19
+      ],
+      [
+        20,
+        39
+      ],
+      [
+        40,
+        59
+      ],
+      [
+        60,
+        200
+      ]
+    ],
+    "SUCCESS": {
+      "small_gap_max": 0.03,
+      "adult_fpr_max": 0.05,
+      "adult_fpr_vs_A": 0.02,
+      "mae_noninferiority_years": 0.5
+    },
+    "TUNING": {
+      "tpr_drop_max": 0.02
+    },
+    "HOLM_FAMILY": [
+      "E_inv",
+      "F1",
+      "F2"
+    ],
+    "CONTEXT_MODELS": [
+      "B",
+      "C",
+      "C2"
+    ],
+    "HOLM_FAMILY_V1": [
+      "B",
+      "C",
+      "C2",
+      "D",
+      "E_inv",
+      "E_eq",
+      "data_fairface",
+      "data_mixup",
+      "F"
+    ],
+    "AUDIT_CHILD_PROMPTS": [
+      "a photo of a child",
+      "a photo of a kid",
+      "a photo of a baby",
+      "a photo of a teenager"
+    ],
+    "AUDIT_ADULT_PROMPTS": [
+      "a photo of an adult",
+      "a photo of a man",
+      "a photo of a woman"
+    ]
+  },
+  "plan": "docs/FOLLOWUP_LEACE.md",
+  "inputs": {
+    "embeddings_sha256": "4a6f66c1ec7b888f87ada759ab6bec3bde1407a077ff80ba28b12d83803bb3c3",
+    "folds_sha256": "34fb834ae845eaaca86def23f0d7f09b9fb44948921571a782371eee1d820f75"
+  },
+  "A_oof_sha256": "308293910fa5269062eb7d466e9aded5f30a45021a32bd019273b44e8b52105f",
+  "grid": {
+    "hidden": [
+      0,
+      512
+    ],
+    "lr": [
+      0.001,
+      0.0003
+    ],
+    "weight_decay": [
+      0.0001,
+      0.01
+    ]
+  },
+  "fixed": {
+    "max_epochs": 60,
+    "batch_size": 256,
+    "dropout": 0.1,
+    "loss": "l1",
+    "method": "plain"
+  },
+  "select": "mae",
+  "variants": {
+    "band": {
+      "conditional_on_age_band": true,
+      "report": {
+        "by_group": {
+          "White": {
+            "n": 10078,
+            "n_minor": 1856,
+            "n_teen_10_17": 750,
+            "n_adult_20_59": 6218,
+            "tpr_strat": {
+              "est": 0.9471087189873418,
+              "ci": [
+                0.9387915304794517,
+                0.9551190987398852
+              ]
+            },
+            "tpr_teen": {
+              "est": 0.8253333333333334,
+              "ci": [
+                0.7975193534888587,
+                0.8514905368087828
+              ]
+            },
+            "tpr_0_9": {
+              "est": 0.9936708860759493,
+              "ci": [
+                0.9882139619220308,
+                0.9981566820276497
+              ]
+            },
+            "fpr_adult": {
+              "est": 0.004503055644901898,
+              "ci": [
+                0.0027850844068748387,
+                0.006237255996986895
+              ]
+            },
+            "age_err_minor_strat": {
+              "est": 0.03748018928014707,
+              "ci": [
+                -0.15114006969126953,
+                0.22428485790937153
+              ]
+            },
+            "mae": {
+              "est": 4.758127441580833,
+              "ci": [
+                4.669574798844902,
+                4.847435579222111
+              ]
+            }
+          },
+          "Black": {
+            "n": 4526,
+            "n_minor": 280,
+            "n_teen_10_17": 126,
+            "n_adult_20_59": 3845,
+            "tpr_strat": {
+              "est": 0.846687012987013,
+              "ci": [
+                0.8163059412112273,
+                0.8786934127745633
+              ]
+            },
+            "tpr_teen": {
+              "est": 0.5476190476190477,
+              "ci": [
+                0.45925925925925926,
+                0.636381964809384
+              ]
+            },
+            "tpr_0_9": {
+              "est": 0.961038961038961,
+              "ci": [
+                0.930379746835443,
+                0.9876562144967053
+              ]
+            },
+            "fpr_adult": {
+              "est": 0.0046814044213263975,
+              "ci": [
+                0.002612927567175977,
+                0.006978637660334849
+              ]
+            },
+            "age_err_minor_strat": {
+              "est": 1.9744878472705958,
+              "ci": [
+                1.2722582940524787,
+                2.73544655217555
+              ]
+            },
+            "mae": {
+              "est": 4.772452922232799,
+              "ci": [
+                4.648437618024215,
+                4.898779966512577
+              ]
+            }
+          },
+          "Asian": {
+            "n": 3434,
+            "n_minor": 995,
+            "n_teen_10_17": 66,
+            "n_adult_20_59": 2128,
+            "tpr_strat": {
+              "est": 0.948151717389177,
+              "ci": [
+                0.9202751578669384,
+                0.9732714407129051
+              ]
+            },
+            "tpr_teen": {
+              "est": 0.8181818181818182,
+              "ci": [
+                0.7169811320754716,
+                0.9090909090909091
+              ]
+            },
+            "tpr_0_9": {
+              "est": 0.9978471474703983,
+              "ci": [
+                0.9945768593036429,
+                1.0
+              ]
+            },
+            "fpr_adult": {
+              "est": 0.0018796992481203006,
+              "ci": [
+                0.000460824186437476,
+                0.003833299414124142
+              ]
+            },
+            "age_err_minor_strat": {
+              "est": -0.18136698426342113,
+              "ci": [
+                -0.4931822379085718,
+                0.14905075838898493
+              ]
+            },
+            "mae": {
+              "est": 3.376637688352217,
+              "ci": [
+                3.2528698886634886,
+                3.510615201017718
+              ]
+            }
+          },
+          "Indian": {
+            "n": 3975,
+            "n_minor": 591,
+            "n_teen_10_17": 102,
+            "n_adult_20_59": 3104,
+            "tpr_strat": {
+              "est": 0.9090324191026105,
+              "ci": [
+                0.8832097469709778,
+                0.9329056612464346
+              ]
+            },
+            "tpr_teen": {
+              "est": 0.6764705882352942,
+              "ci": [
+                0.5824175824175825,
+                0.7623762376237624
+              ]
+            },
+            "tpr_0_9": {
+              "est": 0.9979550102249489,
+              "ci": [
+                0.9937106918238994,
+                1.0
+              ]
+            },
+            "fpr_adult": {
+              "est": 0.0022551546391752575,
+              "ci": [
+                0.0006476683937823834,
+                0.0041814088131231905
+              ]
+            },
+            "age_err_minor_strat": {
+              "est": -0.12343183928993628,
+              "ci": [
+                -0.411717571710726,
+                0.19419174874601147
+              ]
+            },
+            "mae": {
+              "est": 4.357241097274971,
+              "ci": [
+                4.23403209690081,
+                4.48384227498962
+              ]
+            }
+          }
+        },
+        "tpr_gap_W_minus_B": {
+          "est": 0.10042170600032885,
+          "ci": [
+            0.06727260169787286,
+            0.1324514899645864
+          ]
+        },
+        "tpr_teen_gap_W_minus_B": {
+          "est": 0.2777142857142857,
+          "ci": [
+            0.1840278172691056,
+            0.37230172529748357
+          ]
+        },
+        "fpr_diff_B_minus_W": {
+          "est": 0.0001783487764244994,
+          "ci": [
+            -0.002487296983247673,
+            0.0029995784467930164
+          ]
+        },
+        "age_err_gap_B_minus_W": {
+          "est": 1.9370076579904487,
+          "ci": [
+            1.2211357132258311,
+            2.7359229840932446
+          ]
+        },
+        "worst_group_tpr_strat": {
+          "est": 0.846687012987013,
+          "ci": [
+            0.8163059412112273,
+            0.8786934127745633
+          ]
+        },
+        "mae_overall": {
+          "est": 4.410245627628684,
+          "ci": [
+            4.356747739479182,
+            4.466053738293212
+          ]
+        },
+        "n_images": 23705,
+        "bootstrap": {
+          "B": 2000,
+          "seed": 0,
+          "scheme": "within group, multinomial"
+        }
+      },
+      "paired_vs_A": {
+        "gap_reduction_A_minus_M": {
+          "est": 0.009326002827552138,
+          "ci": [
+            -0.010700741540941494,
+            0.02855959473903286
+          ],
+          "p_one_sided": 0.16591704147926037
+        },
+        "mae_increase_M_minus_A": {
+          "est": -0.033373979239268436,
+          "ci": [
+            -0.060997643931082444,
+            -0.006407913388002556
+          ]
+        }
+      },
+      "probes": {
+        "chance": 0.2,
+        "classes": [
+          "Asian",
+          "Black",
+          "Indian",
+          "Others",
+          "White"
+        ],
+        "n": 23705,
+        "majority_share": 0.42514237502636576,
+        "bal_acc": {
+          "erased_linear": {
+            "est": 0.19986019033367375,
+            "ci": [
+              0.19877124456561446,
+              0.20103641823025986
+            ]
+          },
+          "erased_mlp": {
+            "est": 0.8048405949854495,
+            "ci": [
+              0.7992602989989419,
+              0.8105937002651484
+            ]
+          },
+          "plain_linear": {
+            "est": 0.8232263790905637,
+            "ci": [
+              0.817711107109423,
+              0.8292005373551901
+            ]
+          },
+          "plain_mlp": {
+            "est": 0.8372536439943674,
+            "ci": [
+              0.83167703261816,
+              0.8428867500827669
+            ]
+          },
+          "head_z_linear": {
+            "est": 0.6001601622964177,
+            "ci": [
+              0.5937597407867333,
+              0.6064364958270825
+            ]
+          }
+        },
+        "recall_by_race": {
+          "erased_linear": {
+            "Asian": 0.0122306348281887,
+            "Black": 0.012372956252761821,
+            "Indian": 0.0,
+            "Others": 0.0,
+            "White": 0.9746973605874182
+          },
+          "erased_mlp": {
+            "Asian": 0.9181712288875946,
+            "Black": 0.9083075563411401,
+            "Indian": 0.8732075471698113,
+            "Others": 0.39893617021276595,
+            "White": 0.9255804723159357
+          },
+          "plain_linear": {
+            "Asian": 0.9295282469423413,
+            "Black": 0.9122845779938136,
+            "Indian": 0.8860377358490567,
+            "Others": 0.4716312056737589,
+            "White": 0.916650128993848
+          },
+          "plain_mlp": {
+            "Asian": 0.9449621432731509,
+            "Black": 0.9288555015466196,
+            "Indian": 0.909937106918239,
+            "Others": 0.4793144208037825,
+            "White": 0.9231990474300457
+          },
+          "head_z_linear": {
+            "Asian": 0.6767617938264414,
+            "Black": 0.6407423773751657,
+            "Indian": 0.6719496855345912,
+            "Others": 0.18439716312056736,
+            "White": 0.8269497916253225
+          }
+        },
+        "diff": {}
+      },
+      "checks": [
+        {
+          "test_fold": 0,
+          "leace_rank": 4,
+          "max_abs_train_cross_cov_race_onehot_after": 0.046966388742831586,
+          "head_refit_test_mae_diff_vs_oof": 0.0,
+          "seconds": 96.3
+        },
+        {
+          "test_fold": 1,
+          "leace_rank": 4,
+          "max_abs_train_cross_cov_race_onehot_after": 0.047860528719945,
+          "head_refit_test_mae_diff_vs_oof": 0.0,
+          "seconds": 89.2
+        },
+        {
+          "test_fold": 2,
+          "leace_rank": 4,
+          "max_abs_train_cross_cov_race_onehot_after": 0.047876536046444644,
+          "head_refit_test_mae_diff_vs_oof": 0.0,
+          "seconds": 93.8
+        },
+        {
+          "test_fold": 3,
+          "leace_rank": 4,
+          "max_abs_train_cross_cov_race_onehot_after": 0.04731622190660602,
+          "head_refit_test_mae_diff_vs_oof": 0.0,
+          "seconds": 93.9
+        },
+        {
+          "test_fold": 4,
+          "leace_rank": 4,
+          "max_abs_train_cross_cov_race_onehot_after": 0.04751379809617663,
+          "head_refit_test_mae_diff_vs_oof": 0.0,
+          "seconds": 96.9
+        }
+      ],
+      "folds": [
+        {
+          "test_fold": 0,
+          "inner_val_fold": 1,
+          "select": "mae",
+          "chosen": {
+            "hidden": 512,
+            "lr": 0.001,
+            "weight_decay": 0.01
+          },
+          "epochs": 7,
+          "inner_val_mae": 4.490734336452965,
+          "test_mae": 4.472361678867158,
+          "trials": [
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 40,
+              "val_mae": 5.138634111848841
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 9,
+              "val_mae": 5.1224980799936475
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 59,
+              "val_mae": 5.086762406977913
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 27,
+              "val_mae": 5.078957064186379
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 3,
+              "val_mae": 4.554603552494436
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 7,
+              "val_mae": 4.490734336452965
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 12,
+              "val_mae": 4.490976331586198
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 9,
+              "val_mae": 4.504241767253033
+            }
+          ],
+          "refit_info": {
+            "method": "plain"
+          },
+          "seconds": 49.2
+        },
+        {
+          "test_fold": 1,
+          "inner_val_fold": 2,
+          "select": "mae",
+          "chosen": {
+            "hidden": 512,
+            "lr": 0.0003,
+            "weight_decay": 0.01
+          },
+          "epochs": 7,
+          "inner_val_mae": 4.403592968292479,
+          "test_mae": 4.414726045932281,
+          "trials": [
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 37,
+              "val_mae": 5.1105462930907075
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 17,
+              "val_mae": 5.110709611634773
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 43,
+              "val_mae": 5.053685841595423
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 49,
+              "val_mae": 5.064486755712516
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 4,
+              "val_mae": 4.448617498742227
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 8,
+              "val_mae": 4.4215236159796625
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 10,
+              "val_mae": 4.413960632321501
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 7,
+              "val_mae": 4.403592968292479
+            }
+          ],
+          "refit_info": {
+            "method": "plain"
+          },
+          "seconds": 48.5
+        },
+        {
+          "test_fold": 2,
+          "inner_val_fold": 3,
+          "select": "mae",
+          "chosen": {
+            "hidden": 512,
+            "lr": 0.0003,
+            "weight_decay": 0.01
+          },
+          "epochs": 10,
+          "inner_val_mae": 4.399323902252743,
+          "test_mae": 4.299839156945007,
+          "trials": [
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 22,
+              "val_mae": 5.065307367165822
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 54,
+              "val_mae": 5.077139993287802
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 32,
+              "val_mae": 5.0243149370609705
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 57,
+              "val_mae": 5.026730164776926
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 5,
+              "val_mae": 4.446395788101938
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 7,
+              "val_mae": 4.415440308193877
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 8,
+              "val_mae": 4.400226347200558
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 10,
+              "val_mae": 4.399323902252743
+            }
+          ],
+          "refit_info": {
+            "method": "plain"
+          },
+          "seconds": 48.0
+        },
+        {
+          "test_fold": 3,
+          "inner_val_fold": 4,
+          "select": "mae",
+          "chosen": {
+            "hidden": 512,
+            "lr": 0.001,
+            "weight_decay": 0.01
+          },
+          "epochs": 4,
+          "inner_val_mae": 4.448250912164043,
+          "test_mae": 4.430505791246221,
+          "trials": [
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 47,
+              "val_mae": 5.070436907980416
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 21,
+              "val_mae": 5.082590603595941
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 58,
+              "val_mae": 5.006749261883218
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 33,
+              "val_mae": 5.012350437176018
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 6,
+              "val_mae": 4.492178358132523
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 4,
+              "val_mae": 4.448250912164043
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 8,
+              "val_mae": 4.502996055394082
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 7,
+              "val_mae": 4.464034937613431
+            }
+          ],
+          "refit_info": {
+            "method": "plain"
+          },
+          "seconds": 49.2
+        },
+        {
+          "test_fold": 4,
+          "inner_val_fold": 0,
+          "select": "mae",
+          "chosen": {
+            "hidden": 512,
+            "lr": 0.001,
+            "weight_decay": 0.0001
+          },
+          "epochs": 10,
+          "inner_val_mae": 4.428728454744535,
+          "test_mae": 4.433795465152751,
+          "trials": [
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 48,
+              "val_mae": 5.125582933848126
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 45,
+              "val_mae": 5.118615892457409
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 51,
+              "val_mae": 5.063583293009884
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 54,
+              "val_mae": 5.058103943962135
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 10,
+              "val_mae": 4.428728454744535
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 9,
+              "val_mae": 4.496324872337903
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 14,
+              "val_mae": 4.448930892770862
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 8,
+              "val_mae": 4.443906196197142
+            }
+          ],
+          "refit_info": {
+            "method": "plain"
+          },
+          "seconds": 48.4
+        }
+      ],
+      "oof_file": {
+        "drive_path": "per_image/oof__LEACE_band__seed0.csv",
+        "sha256": "bb6f73647f83ce0a1bd89d85cb1417948fc5da68c89083e964628fdff33a9e35"
+      },
+      "race_removed_linear": true
+    },
+    "plain": {
+      "conditional_on_age_band": false,
+      "report": {
+        "by_group": {
+          "White": {
+            "n": 10078,
+            "n_minor": 1856,
+            "n_teen_10_17": 750,
+            "n_adult_20_59": 6218,
+            "tpr_strat": {
+              "est": 0.9409226502712478,
+              "ci": [
+                0.9321477516360996,
+                0.9494836549494515
+              ]
+            },
+            "tpr_teen": {
+              "est": 0.8053333333333333,
+              "ci": [
+                0.7771523771924053,
+                0.832664510180801
+              ]
+            },
+            "tpr_0_9": {
+              "est": 0.9927667269439421,
+              "ci": [
+                0.9870717474628966,
+                0.9972850678733032
+              ]
+            },
+            "fpr_adult": {
+              "est": 0.005146349308459312,
+              "ci": [
+                0.003421797721163998,
+                0.007046821340669035
+              ]
+            },
+            "age_err_minor_strat": {
+              "est": 0.5237305028640293,
+              "ci": [
+                0.3257578760151873,
+                0.7243097199588484
+              ]
+            },
+            "mae": {
+              "est": 5.072292761099301,
+              "ci": [
+                4.975526991043105,
+                5.168268323316469
+              ]
+            }
+          },
+          "Black": {
+            "n": 4526,
+            "n_minor": 280,
+            "n_teen_10_17": 126,
+            "n_adult_20_59": 3845,
+            "tpr_strat": {
+              "est": 0.8382129870129871,
+              "ci": [
+                0.8095150405809677,
+                0.8690476809493903
+              ]
+            },
+            "tpr_teen": {
+              "est": 0.5,
+              "ci": [
+                0.4132100223009314,
+                0.5862068965517241
+              ]
+            },
+            "tpr_0_9": {
+              "est": 0.9675324675324676,
+              "ci": [
+                0.9387698095998176,
+                0.9933344370860927
+              ]
+            },
+            "fpr_adult": {
+              "est": 0.007022106631989597,
+              "ci": [
+                0.004456065170860913,
+                0.009900990099009901
+              ]
+            },
+            "age_err_minor_strat": {
+              "est": 1.7605079408316966,
+              "ci": [
+                1.0035189848199384,
+                2.59801307768558
+              ]
+            },
+            "mae": {
+              "est": 4.950573028781797,
+              "ci": [
+                4.824790642897611,
+                5.078917526680936
+              ]
+            }
+          },
+          "Asian": {
+            "n": 3434,
+            "n_minor": 995,
+            "n_teen_10_17": 66,
+            "n_adult_20_59": 2128,
+            "tpr_strat": {
+              "est": 0.9306093942655838,
+              "ci": [
+                0.8999736908502411,
+                0.9586355847791261
+              ]
+            },
+            "tpr_teen": {
+              "est": 0.7575757575757576,
+              "ci": [
+                0.6451612903225806,
+                0.8571886446886444
+              ]
+            },
+            "tpr_0_9": {
+              "est": 0.9967707212055974,
+              "ci": [
+                0.9925529932250243,
+                1.0
+              ]
+            },
+            "fpr_adult": {
+              "est": 0.003289473684210526,
+              "ci": [
+                0.0009478672985781991,
+                0.005761756260528479
+              ]
+            },
+            "age_err_minor_strat": {
+              "est": 0.5960198057150692,
+              "ci": [
+                0.28597185774634976,
+                0.9148718907205537
+              ]
+            },
+            "mae": {
+              "est": 3.61260690779914,
+              "ci": [
+                3.4792697697118564,
+                3.7528739669968205
+              ]
+            }
+          },
+          "Indian": {
+            "n": 3975,
+            "n_minor": 591,
+            "n_teen_10_17": 102,
+            "n_adult_20_59": 3104,
+            "tpr_strat": {
+              "est": 0.9090324191026105,
+              "ci": [
+                0.8826391809605912,
+                0.933413859508547
+              ]
+            },
+            "tpr_teen": {
+              "est": 0.6764705882352942,
+              "ci": [
+                0.5809447004608296,
+                0.7623846282933378
+              ]
+            },
+            "tpr_0_9": {
+              "est": 0.9979550102249489,
+              "ci": [
+                0.9937106918238994,
+                1.0
+              ]
+            },
+            "fpr_adult": {
+              "est": 0.0032216494845360823,
+              "ci": [
+                0.0012919896640826874,
+                0.00549468331021729
+              ]
+            },
+            "age_err_minor_strat": {
+              "est": 0.5327200381339858,
+              "ci": [
+                0.23280053743582882,
+                0.8467709761943237
+              ]
+            },
+            "mae": {
+              "est": 4.513082922695762,
+              "ci": [
+                4.388674000230908,
+                4.645655661042988
+              ]
+            }
+          }
+        },
+        "tpr_gap_W_minus_B": {
+          "est": 0.1027096632582607,
+          "ci": [
+            0.07032988200334293,
+            0.1338006259629805
+          ]
+        },
+        "tpr_teen_gap_W_minus_B": {
+          "est": 0.30533333333333335,
+          "ci": [
+            0.2139132825560485,
+            0.3974051972440117
+          ]
+        },
+        "fpr_diff_B_minus_W": {
+          "est": 0.0018757573235302855,
+          "ci": [
+            -0.001201240696820283,
+            0.005231734177706794
+          ]
+        },
+        "age_err_gap_B_minus_W": {
+          "est": 1.2367774379676673,
+          "ci": [
+            0.4776636118086935,
+            2.0834015364393523
+          ]
+        },
+        "worst_group_tpr_strat": {
+          "est": 0.8382129870129871,
+          "ci": [
+            0.8095150405809677,
+            0.8690450449115502
+          ]
+        },
+        "mae_overall": {
+          "est": 4.671754989552204,
+          "ci": [
+            4.615633027287427,
+            4.730303576434829
+          ]
+        },
+        "n_images": 23705,
+        "bootstrap": {
+          "B": 2000,
+          "seed": 0,
+          "scheme": "within group, multinomial"
+        }
+      },
+      "paired_vs_A": {
+        "gap_reduction_A_minus_M": {
+          "est": 0.007038045569620288,
+          "ci": [
+            -0.010157719313813708,
+            0.02452322805462707
+          ],
+          "p_one_sided": 0.21189405297351324
+        },
+        "mae_increase_M_minus_A": {
+          "est": 0.22813538268425138,
+          "ci": [
+            0.19444033685458584,
+            0.2644361616412364
+          ]
+        }
+      },
+      "probes": {
+        "chance": 0.2,
+        "classes": [
+          "Asian",
+          "Black",
+          "Indian",
+          "Others",
+          "White"
+        ],
+        "n": 23705,
+        "majority_share": 0.42514237502636576,
+        "bal_acc": {
+          "erased_linear": {
+            "est": 0.2,
+            "ci": [
+              0.2,
+              0.2
+            ]
+          },
+          "erased_mlp": {
+            "est": 0.8157978668852385,
+            "ci": [
+              0.8101221637078919,
+              0.8218380583576472
+            ]
+          },
+          "plain_linear": {
+            "est": 0.8232263790905637,
+            "ci": [
+              0.817711107109423,
+              0.8292005373551901
+            ]
+          },
+          "plain_mlp": {
+            "est": 0.8372536439943674,
+            "ci": [
+              0.83167703261816,
+              0.8428867500827669
+            ]
+          },
+          "head_z_linear": {
+            "est": 0.6869928559924687,
+            "ci": [
+              0.6800823774804905,
+              0.6933098521586829
+            ]
+          }
+        },
+        "recall_by_race": {
+          "erased_linear": {
+            "Asian": 0.0,
+            "Black": 0.0,
+            "Indian": 0.0,
+            "Others": 0.0,
+            "White": 1.0
+          },
+          "erased_mlp": {
+            "Asian": 0.9263249854397204,
+            "Black": 0.9058771542200619,
+            "Indian": 0.8820125786163522,
+            "Others": 0.4432624113475177,
+            "White": 0.9215122048025401
+          },
+          "plain_linear": {
+            "Asian": 0.9295282469423413,
+            "Black": 0.9122845779938136,
+            "Indian": 0.8860377358490567,
+            "Others": 0.4716312056737589,
+            "White": 0.916650128993848
+          },
+          "plain_mlp": {
+            "Asian": 0.9449621432731509,
+            "Black": 0.9288555015466196,
+            "Indian": 0.909937106918239,
+            "Others": 0.4793144208037825,
+            "White": 0.9231990474300457
+          },
+          "head_z_linear": {
+            "Asian": 0.8013977868375073,
+            "Black": 0.7377375165709236,
+            "Indian": 0.7051572327044026,
+            "Others": 0.3433806146572104,
+            "White": 0.8472911291923001
+          }
+        },
+        "diff": {}
+      },
+      "checks": [
+        {
+          "test_fold": 0,
+          "leace_rank": 4,
+          "max_abs_train_cross_cov_race_onehot_after": 1.2661131328529736e-05,
+          "head_refit_test_mae_diff_vs_oof": 0.0,
+          "seconds": 76.6
+        },
+        {
+          "test_fold": 1,
+          "leace_rank": 4,
+          "max_abs_train_cross_cov_race_onehot_after": 1.1516378471775548e-05,
+          "head_refit_test_mae_diff_vs_oof": 0.0,
+          "seconds": 77.0
+        },
+        {
+          "test_fold": 2,
+          "leace_rank": 4,
+          "max_abs_train_cross_cov_race_onehot_after": 1.1245382726650167e-05,
+          "head_refit_test_mae_diff_vs_oof": 0.0,
+          "seconds": 75.5
+        },
+        {
+          "test_fold": 3,
+          "leace_rank": 4,
+          "max_abs_train_cross_cov_race_onehot_after": 1.381748817293315e-05,
+          "head_refit_test_mae_diff_vs_oof": 0.0,
+          "seconds": 69.5
+        },
+        {
+          "test_fold": 4,
+          "leace_rank": 4,
+          "max_abs_train_cross_cov_race_onehot_after": 1.3665167672998198e-05,
+          "head_refit_test_mae_diff_vs_oof": 0.0,
+          "seconds": 73.4
+        }
+      ],
+      "folds": [
+        {
+          "test_fold": 0,
+          "inner_val_fold": 1,
+          "select": "mae",
+          "chosen": {
+            "hidden": 512,
+            "lr": 0.001,
+            "weight_decay": 0.01
+          },
+          "epochs": 14,
+          "inner_val_mae": 4.678198974601531,
+          "test_mae": 4.7558616699217575,
+          "trials": [
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 54,
+              "val_mae": 7.311433673615185
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 54,
+              "val_mae": 7.300556267653205
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 38,
+              "val_mae": 7.2560582693910565
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 51,
+              "val_mae": 7.256592108317613
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 12,
+              "val_mae": 4.740050413984294
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 14,
+              "val_mae": 4.678198974601531
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 18,
+              "val_mae": 4.707515941293506
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 10,
+              "val_mae": 4.72962654591484
+            }
+          ],
+          "refit_info": {
+            "method": "plain"
+          },
+          "seconds": 48.1
+        },
+        {
+          "test_fold": 1,
+          "inner_val_fold": 2,
+          "select": "mae",
+          "chosen": {
+            "hidden": 512,
+            "lr": 0.001,
+            "weight_decay": 0.01
+          },
+          "epochs": 9,
+          "inner_val_mae": 4.611478161820149,
+          "test_mae": 4.663352525739271,
+          "trials": [
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 38,
+              "val_mae": 7.538762986864759
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 16,
+              "val_mae": 7.537999990573277
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 54,
+              "val_mae": 7.5031972543273024
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 46,
+              "val_mae": 7.503992423406468
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 11,
+              "val_mae": 4.660540101700593
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 9,
+              "val_mae": 4.611478161820149
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 8,
+              "val_mae": 4.6603441146573825
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 7,
+              "val_mae": 4.626569056690527
+            }
+          ],
+          "refit_info": {
+            "method": "plain"
+          },
+          "seconds": 49.2
+        },
+        {
+          "test_fold": 2,
+          "inner_val_fold": 3,
+          "select": "mae",
+          "chosen": {
+            "hidden": 512,
+            "lr": 0.0003,
+            "weight_decay": 0.0001
+          },
+          "epochs": 12,
+          "inner_val_mae": 4.560974561335703,
+          "test_mae": 4.586400707141129,
+          "trials": [
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 14,
+              "val_mae": 7.450528773128216
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 6,
+              "val_mae": 7.42112955494672
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 42,
+              "val_mae": 7.423575724928219
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 57,
+              "val_mae": 7.417429934180173
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 6,
+              "val_mae": 4.664850365884551
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 10,
+              "val_mae": 4.665361225129105
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 12,
+              "val_mae": 4.560974561335703
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 10,
+              "val_mae": 4.604517496452592
+            }
+          ],
+          "refit_info": {
+            "method": "plain"
+          },
+          "seconds": 48.4
+        },
+        {
+          "test_fold": 3,
+          "inner_val_fold": 4,
+          "select": "mae",
+          "chosen": {
+            "hidden": 512,
+            "lr": 0.001,
+            "weight_decay": 0.01
+          },
+          "epochs": 10,
+          "inner_val_mae": 4.694390284907463,
+          "test_mae": 4.678912095294929,
+          "trials": [
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 10,
+              "val_mae": 7.363928164131945
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 54,
+              "val_mae": 7.383595342607483
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 48,
+              "val_mae": 7.3101045560696605
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 33,
+              "val_mae": 7.3285454243605415
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 4,
+              "val_mae": 4.716928315239381
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 10,
+              "val_mae": 4.694390284907463
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 7,
+              "val_mae": 4.726262129602367
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 8,
+              "val_mae": 4.701900457782976
+            }
+          ],
+          "refit_info": {
+            "method": "plain"
+          },
+          "seconds": 49.5
+        },
+        {
+          "test_fold": 4,
+          "inner_val_fold": 0,
+          "select": "mae",
+          "chosen": {
+            "hidden": 512,
+            "lr": 0.0003,
+            "weight_decay": 0.0001
+          },
+          "epochs": 14,
+          "inner_val_mae": 4.655329703760276,
+          "test_mae": 4.674247949663933,
+          "trials": [
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 12,
+              "val_mae": 7.416905987546723
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 48,
+              "val_mae": 7.395896678147208
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 28,
+              "val_mae": 7.36111935835105
+            },
+            {
+              "setting": {
+                "hidden": 0,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 28,
+              "val_mae": 7.376251505444835
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 34,
+              "val_mae": 4.715480524686205
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.001,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 14,
+              "val_mae": 4.700072117829447
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.0001
+              },
+              "best_epoch": 14,
+              "val_mae": 4.655329703760276
+            },
+            {
+              "setting": {
+                "hidden": 512,
+                "lr": 0.0003,
+                "weight_decay": 0.01
+              },
+              "best_epoch": 23,
+              "val_mae": 4.670088200580108
+            }
+          ],
+          "refit_info": {
+            "method": "plain"
+          },
+          "seconds": 48.9
+        }
+      ],
+      "oof_file": {
+        "drive_path": "per_image/oof__LEACE_plain__seed0.csv",
+        "sha256": "4f17152aa0715dfd16f841776493658e5e1aa09cf46be7572978ce48ed1a1fbc"
+      },
+      "race_removed_linear": true
+    }
+  },
+  "race_removed_max_bal_acc": 0.4,
+  "device": "cuda",
+  "torch": "2.14.1+cu130",
+  "note": "exploratory follow-up: unadjusted paired CIs, no Holm, no success verdict",
+  "seconds": 1356.5
+}
