@@ -106,7 +106,7 @@ TUNING = {"tpr_drop_max": 0.02}
 # (proposal: A, E, F1, F2). B, C, C2 are earlier results kept as context (reported with
 # unadjusted p, not part of the family); D, E_eq, data variants deferred to the paper.
 # Until all members have run, missing ones count as p = 1, which is conservative ('interim').
-HOLM_FAMILY = ["E_inv", "F1", "F2"]
+HOLM_FAMILY = ["E_inv", "F1_1", "F1_4", "F2"]   # F1 at two depths since 2026-11-24
 CONTEXT_MODELS = ["B", "C", "C2"]
 HOLM_FAMILY_V1 = ["B", "C", "C2", "D", "E_inv", "E_eq", "data_fairface", "data_mixup", "F"]
 

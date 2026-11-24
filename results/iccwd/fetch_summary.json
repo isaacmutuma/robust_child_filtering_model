@@ -1,0 +1,21 @@
+{
+ "dataset": "amcretu/iccwd",
+ "csv_revision": "9f76b200c40a8a88c19dc17af8b842581f10f5f5",
+ "csv_sha256": "15f1d0142aac67740d6f41a233fe157d580c256f16705fd5c86cdfa8209c694e",
+ "script": "spring-epfl/iccwd dataset_download_images_verify.py",
+ "script_commit": "ee6695fa063655039346a06d127a347321887047",
+ "n_listed": 10000,
+ "n_kept_pdq_verified": 8281,
+ "n_sha_exact": 7756,
+ "by_label_listed": {
+  "Final_NoChild": 8262,
+  "Final_Child": 1675,
+  "Disagreement": 63
+ },
+ "by_label_kept": {
+  "Final_NoChild": 6775,
+  "Final_Child": 1451,
+  "Disagreement": 55
+ },
+ "kept_bytes": 1251595082
+}

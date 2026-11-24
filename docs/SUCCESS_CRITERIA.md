@@ -46,7 +46,7 @@ A model that meets 1, 3 and 4 but not 2 is reported as **narrowing** the gap.
 
 **Multiple comparisons:** the primary test is run for B, C, chosen D, E-invariant, E-equal-errors, each data variant and F. Holm correction is applied across all of these.
 
-*Amendment 2026-11-19 (Isaac approved; CLAUDE.md Decision Log):* C2 was added on 2026-11-18. For the class scope the family is now the conditions tested against A in the proposal: **E-invariant, F1, F2**. B, C and C2 are earlier results kept as context, reported with their unadjusted p and outside the family; D, E-equal-errors and the data variants are deferred to the paper. The earlier family-of-9 comparisons are kept in `results/comparisons_family9.json`.
+*Amendment 2026-11-19 (Isaac approved; CLAUDE.md Decision Log):* C2 was added on 2026-11-18. For the class scope the family is now the conditions tested against A in the proposal: **E-invariant, F1, F2**; on 2026-11-24 F1 was split into two depths, so the family is **E-invariant, F1-1 (LoRA in the last ViT block), F1-4 (last 4 blocks), F2**. B, C and C2 are earlier results kept as context, reported with their unadjusted p and outside the family; D, E-equal-errors and the data variants are deferred to the paper. The earlier family-of-9 comparisons are kept in `results/comparisons_family9.json`.
 
 **Model A itself:** if A's gap CI already contains 0, the frozen embeddings plus a trained head remove the zero-shot bias. That is a result in itself, and the comparisons in criterion 1 lose their purpose. This is reported plainly, not reframed.
 
