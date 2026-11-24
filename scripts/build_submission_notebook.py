@@ -387,7 +387,7 @@ def build():
 | **7. Fine-tuning (F1-1, F1-4, F2)** | LoRA inside CLIP |
 | **8. Re-check** | Main comparison with 3 seeds |
 | **9. Follow-up questions** | Two questions that came from my results |
-| **10. Visual cases** | ICCWD photos (children's eyes blurred) |
+| **10. Visual cases and demo** | A few clearly harmless ICCWD photos run through the models |
 | **11. Limits and conclusion** | |
 | **12. Experiment log** | Settings, epochs, updates, seeds and run time of every run |
 
