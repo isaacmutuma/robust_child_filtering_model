@@ -20,3 +20,8 @@ __pycache__/
 .DS_Store
 # Agent working files
 CLAUDE.md
+
+# never commit images (ICCWD / UTKFace); charts are .png under figures/ only
+*.jpg
+*.jpeg
+/iccwd/
