@@ -430,7 +430,7 @@ def sha256(path, bs=1 << 20):
     return h.hexdigest()
 
 from huggingface_hub import hf_hub_download
-tar_path = hf_hub_download(UTKFACE["hf_repo"], UTKFACE["file"], revision=UTKFACE["revision"])
+tar_path = hf_hub_download(UTKFACE["hf_repo"], UTKFACE["file"], revision=UTKFACE["revision"], repo_type="dataset")
 assert sha256(tar_path) == UTKFACE["sha256"], "UTKFace archive does not match the pinned version"
 img_dir = WORK / "UTKFace"
 if not img_dir.exists():

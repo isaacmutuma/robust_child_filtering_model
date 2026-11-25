@@ -43,7 +43,7 @@ def get_utkface(work):
     S = C.SOURCES["utkface"]
     img_dir = work / "UTKFace"
     if not img_dir.exists():
-        tar = hf_hub_download(S["hf_repo"], S["file"], revision=S["revision"])
+        tar = hf_hub_download(S["hf_repo"], S["file"], revision=S["revision"], repo_type="dataset")
         assert sha256(tar) == S["sha256"], "UTKFace archive does not match the pinned version"
         with tarfile.open(tar) as t:
             t.extractall(work, members=[m for m in t.getmembers()
