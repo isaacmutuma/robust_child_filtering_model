@@ -182,6 +182,7 @@ def fit_head(Xtr, ytr, s, epochs, seed, device, Xval=None, gtr=None, atr=None):
 
     if s["hidden"] > 0:   # hidden layer z, for the leakage probe
         predict_fn.encode = lambda Xn: encode(model, Xn)
+    predict_fn.model, predict_fn.y_mu, predict_fn.y_sd = model, y_mu, y_sd   # model F starts from A's head
     info = {"method": method}
     if method == "adv_inv":
         assert s["hidden"] > 0, "E needs a hidden layer"
