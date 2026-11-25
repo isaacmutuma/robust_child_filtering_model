@@ -600,7 +600,7 @@ ax[2].legend(fontsize=8); plt.tight_layout(); plt.show()
 
 ### 7.2 F2 (the better depth + E's adversary)
 1. **I wonder:** does the adversary help once CLIP itself can change?
-2. **I predict, because:** TODO (to be written before F2 is run).
+2. **I predict, because:** F2 narrows the gap more than F1, because once CLIP's blocks can change, the adversary can actually remove race from the features instead of only being fooled, as it was on frozen features. *(Recorded 25 Nov 2026, before any F run.)*
 3. **To check, I will change** only one thing against F1: add E's adversary (make it wrong, λ = 1, 5 adversary steps per step), **and keep** everything else; F2 against F1 is the ablation of the adversary.
 
 **Implementation (my implementation).** open_clip's attention keeps q, k and v in one packed weight; `LoRAAttention` computes the same attention plus the low-rank update. Because blocks 1–20 are frozen, each image's tokens entering block 21 are computed once and stored (fp16, ~12.5 GB), and training runs only the last 4 blocks.
