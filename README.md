@@ -6,6 +6,21 @@ Automated child detectors used to filter text-to-image training data (Crețu et 
 
 **Status (2026-11-19):** embeddings and folds done; model A (gap 0.110 [0.077, 0.142]) and B, C, C2 under the final tuning rule v3 done, none closes or narrows the gap (`results/`). Model E-invariant (adversarial, notebook 06) run on 19 Nov: gap 0.106 [0.071, 0.137], reduction vs A 0.004 [-0.017, 0.024], outcome neither; the adversary was driven to chance but a fresh probe still reads race from its representation as well as from A's (balanced accuracy 0.816 vs 0.819, chance 0.20). Follow-up 1 (notebook 07, `docs/FOLLOWUP_E_FORCE_RACE.md`): pushing the adversary up to lambda 10 never removed race from the representation (probe 0.81-0.82) and never significantly narrowed the gap. Follow-up 2 (LEACE concept erasure, notebook `08_LEACE.ipynb`): removing all linear race information from the embeddings (linear probe at chance, 0.200) left the gap at 0.100 [0.067, 0.132] and the Black − White over-estimation at +1.94 years; race stays readable non-linearly (MLP probe 0.81). Next: F1/F2 (LoRA inside CLIP). The course submission is built in `notebooks/submission/DLP_term_project.ipynb` (skeleton). Success criteria: [`docs/SUCCESS_CRITERIA.md`](docs/SUCCESS_CRITERIA.md); plan and class scope: [`docs/PLAN.md`](docs/PLAN.md).
 
+## How to reproduce (course submission)
+
+**Main file:** `notebooks/submission/DLP_term_project.ipynb` (built by `scripts/build_submission_notebook.py`). It is self-contained: it downloads the data and weights, computes the CLIP features, builds the folds and trains every condition.
+
+**Run it:** open it in Google Colab (Runtime → Change runtime type → T4) or in Jupyter on a GPU server (set `GPU_ID` in the setup cell), then Run all. Each part has an on/off switch in `RUN`. Approximate time on a T4: data + CLIP features 25 min, A 5 min, E 90 min, follow-up 1 60 min, follow-up 2 25 min, each F condition a few hours (`notebooks/10_model_F.ipynb` / `docs/RUN_F_ON_SERVER.md` time one fold first).
+
+**Packages:** Python 3.11+, PyTorch 2.x with CUDA, `open_clip_torch==3.3.0`, `huggingface_hub`, `numpy`, `pandas`, `scikit-learn`, `matplotlib`, `Pillow` (Colab has all except open_clip, which the notebook installs).
+
+**Data and checkpoints (downloaded and checked automatically):**
+- UTKFace: `py97/UTKFace-Cropped` @ `e80f21fb`, file `UTKFace.tar.gz`, SHA-256 `2c065539…`; 23,705 usable images (3 malformed file names skipped).
+- CLIP ViT-L/14, OpenAI weights: `timm/vit_large_patch14_clip_224.openai` @ `18d05354`, SHA-256 `9ce2e8a8…`, loaded with QuickGELU (checked).
+- ICCWD (only for Section 10): labels `amcretu/iccwd` @ `9f76b200`; images fetched from their original URLs with the authors' script (`notebooks/09_iccwd_fetch.ipynb`), kept on Google Drive, never in git.
+
+**Experiment log:** Section 12 of the notebook (settings, epochs, updates, batch size, seed, run time and device for every run); the aggregate result files with their git commit are in `results/`.
+
 **Layout:** `configs/config.py` (paths, pins, frozen constants) · `src/` (CLIP loader with QuickGELU check, data, folds) · `scripts/` (Colab steps) · `notebooks/` · `results/` (aggregate JSON only) · `tests/`.
 
 **Ethics:** no images of children are generated; only UTKFace and FairFace are used; images, embeddings and per-image outputs never enter git; figures and the demo show charts only.
