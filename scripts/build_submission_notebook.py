@@ -658,7 +658,21 @@ if RUN["F"]:
     predF2, RECORDS["F2"] = run_F(F_CONFIGS[best_f1], adversary=True)
     dF2, RESULTS["F2"] = evaluate("F2", predF2)
     PAIRED["F2"] = paired_vs_A(dA, dF2, plan)
-    display(pd.DataFrame([row(m, RESULTS[m], PAIRED.get(m)) for m in RESULTS]))
+else:
+    # Reuse the F run made with scripts/run_model_f.py (same code, same folds and seeds):
+    # its per-image predictions are in F_OOF_DIR and its per-fold settings in results/models/<F>.json.
+    F_OOF_DIR = Path.home() / "fwork"
+    for name in ["F1_1", "F1_4", "F2"]:
+        f = F_OOF_DIR / f"oof__{name}.csv"
+        if not f.exists():
+            print(f"{name}: no saved predictions at {f}; set RUN['F'] = True to train it here"); continue
+        o = pd.read_csv(f, dtype={"id": str}).set_index("id").loc[df.id.values]
+        assert (o.fold.values == folds).all(), "saved predictions use different folds"
+        dF, RESULTS[name] = evaluate(name, o.pred_age.values)
+        PAIRED[name] = paired_vs_A(dA, dF, plan)
+        RECORDS[name] = [{**r, "chosen": {"lora_blocks": r["lora_blocks"]}, "batch": FIXED_F["batch_size"]}
+                         for r in committed(f"models/{name}.json")["folds"]]
+display(pd.DataFrame([row(m, RESULTS[m], PAIRED.get(m)) for m in RESULTS]))
 '''))
     A(md("**After running** — **I observed:** TODO (F results). **Interpretation:** TODO."))
     A(md("## 8. Re-check of the main comparison (3 seeds)\n\nThe key comparison (A against the best model) is repeated with seeds 1 and 2 (seed 0 is the main run): new random initialisation and batch order, same folds and rule. Set `BEST` to the best model after Section 7."))
