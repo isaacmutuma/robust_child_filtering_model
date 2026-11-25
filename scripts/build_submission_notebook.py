@@ -147,6 +147,7 @@ def fit_head(Xtr, ytr, s, epochs, seed, device, Xval=None, gtr=None, atr=None):
 
     if s["hidden"] > 0:
         predict_fn.encode = lambda Xn: encode(model, Xn)
+    predict_fn.model, predict_fn.y_mu, predict_fn.y_sd = model, y_mu, y_sd   # model F starts from A's head
     info = {"method": method}
     if method == "adv_inv":
         classes = sorted(set(np.asarray(gtr).tolist()))
@@ -534,7 +535,7 @@ if RUN["A"]:
     refA = [{{"chosen": r["chosen"], "epochs": r["epochs"], "inner_val_mae": r["inner_val_mae"]}} for r in RECORDS["A"]]
     print("committed result:", round(committed("models/A.json")["report"]["tpr_gap_W_minus_B"]["est"], 3))
 '''))
-    A(md("**After running** — **I observed:** TODO. **Interpretation:** TODO."))
+    A(md("**After running** (committed run, `results/models/A.json`) — **I observed:** the White − Black gap is 11.0 points (95% CI 7.7 to 14.2), larger than zero-shot CLIP's 10.0. A catches 47.6% of Black and 80.9% of White 10–17-year-olds, and over-estimates Black minors' ages by 1.9 years more than White minors' (95% CI 1.2 to 2.7). Adult false alarms stay at most 0.6% in every group; MAE 4.44 years. **Interpretation:** training on UTKFace's own ages does not remove the gap; my prediction that it would shrink was wrong. The gap comes with over-estimation of Black minors' ages, which pushes teenagers over 18."))
     A(md("""
 ### 6.2 Model E (adversarial training on frozen CLIP features)
 1. **I wonder:** can adversarial training on frozen CLIP features remove the race information that makes Black teenagers look older, and close the gap at 18?
@@ -552,7 +553,7 @@ if RUN["E"]:
     for n, r in LEAK_E["bal_acc"].items():
         print(f"race probe on {n:9s}: {r['est']:.3f} [{r['ci'][0]:.3f}, {r['ci'][1]:.3f}]  (chance 0.20)")
 '''))
-    A(md("**After running** — **I observed:** TODO. **Interpretation:** TODO. **Not yet certain:** TODO."))
+    A(md("**After running** (committed run, `results/models/E_inv.json`) — **I observed:** the gap is 10.6 points (95% CI 7.1 to 13.7); the reduction against A is 0.4 points (95% CI −1.7 to 2.4, p = 0.36), at almost no cost (MAE +0.08 years). During training the adversary's race accuracy fell to chance (0.20–0.28 in four of five folds), yet a new linear probe reads race from E's hidden layer as well as from A's (balanced accuracy 0.816 vs 0.819; chance 0.20). The tuning rule picked the target 'make the adversary wrong' in every fold. **Interpretation:** the adversary was fooled, but race was not removed, as I predicted. **Not yet certain:** whether removing race would close the gap; this became follow-up 1."))
     A(md("### 6.3 Results so far"))
     A(code('''
 def row(name, rep, paired=None):
@@ -567,23 +568,127 @@ def row(name, rep, paired=None):
     return out
 display(pd.DataFrame([row(m, RESULTS[m], PAIRED.get(m) if m != "A" else None) for m in RESULTS]))
 '''))
-    A(md("TODO figures: TPR by age and group; predicted vs true age by group; E's adversary accuracy per epoch."))
+    A(md("### 6.4 Figures"))
+    A(code('''
+PRED = {"A": predA, "E": predE}
+fig, ax = plt.subplots(1, 3, figsize=(15, 4))
+for name, pr in PRED.items():                                   # detection rate of minors by age
+    for g, ls in [("White", "-"), ("Black", "--")]:
+        m = groups == g
+        tpr = [np.mean(pr[m & (ages == a)] < 18) for a in range(0, 18)]
+        ax[0].plot(range(18), tpr, ls, label=f"{name} {g}")
+ax[0].set(xlabel="true age", ylabel="share flagged as child", title="Minors flagged as children"); ax[0].legend(fontsize=8)
+for g in ["White", "Black"]:                                     # predicted vs true age (model A)
+    m = (groups == g) & (ages <= 30)
+    mean_pred = [predA[m & (ages == a)].mean() for a in range(0, 31)]
+    ax[1].plot(range(31), mean_pred, label=g)
+ax[1].plot([0, 30], [0, 30], "k:", lw=1); ax[1].axhline(18, c="grey", lw=1)
+ax[1].set(xlabel="true age", ylabel="mean predicted age (A)", title="Over-estimation near 18"); ax[1].legend()
+for r in RECORDS["E_inv"]:                                       # E: adversary accuracy during training
+    ax[2].plot(range(1, len(r["refit_info"]["adv_bal_acc_by_epoch"]) + 1), r["refit_info"]["adv_bal_acc_by_epoch"], label=f"fold {r['test_fold']}")
+ax[2].axhline(0.2, ls="--", c="grey", lw=1); ax[2].set(xlabel="epoch", ylabel="adversary balanced accuracy", ylim=(0, 1), title="E: adversary is fooled")
+ax[2].legend(fontsize=8); plt.tight_layout(); plt.show()
+'''))
 
     A(md("""
 ## 7. Fine-tuning inside CLIP (F1-1, F1-4, F2)
 
-**Plan.** LoRA (rank 8) on the query, key and value projections of CLIP's last block (F1-1) or last 4 blocks (F1-4); the rest of CLIP stays frozen. LoRA's B matrix starts at zero and the MLP head starts from model A's head for the same fold, so before training F gives exactly A's predictions (checked). The first 20 blocks are frozen, so their output is computed once and stored; each epoch only runs the last 4 blocks. AdamW, learning rate 1e-4, batch 64, up to 10 epochs, epoch chosen on the validation fold with the same rule as E. F2 adds E's adversary to the better depth; F2 against F1 is the ablation. CLS-token attention of the last block (averaged over heads) is compared before and after.
+### 7.1 F1-1 and F1-4
+1. **I wonder:** if CLIP's last vision blocks are allowed to change, does the White − Black gap at 18 narrow, and how deep does the change need to go?
+2. **I predict, because:** fine-tuning has the best chance of narrowing the gap, because it can change how CLIP encodes age itself, which E and LEACE could not; but it may overfit, since there are only 126 Black teenagers.
+3. **To check, I will change** only which weights can learn: LoRA (rank 8, α = 16) on the query, key and value projections of the last block (F1-1) or the last 4 blocks (F1-4), with the rest of CLIP frozen, **and keep** the folds, L1 loss, age head (started from A's head, so step 0 equals A), the tuning rule (epoch ≤ 10 chosen on the validation fold) and the evaluation of A and E.
 
-TODO: three sentences for F1 and F2, the code, results.
+### 7.2 F2 (the better depth + E's adversary)
+1. **I wonder:** does the adversary help once CLIP itself can change?
+2. **I predict, because:** TODO (to be written before F2 is run).
+3. **To check, I will change** only one thing against F1: add E's adversary (make it wrong, λ = 1, 5 adversary steps per step), **and keep** everything else; F2 against F1 is the ablation of the adversary.
+
+**Implementation (my implementation).** open_clip's attention keeps q, k and v in one packed weight; `LoRAAttention` computes the same attention plus the low-rank update. Because blocks 1–20 are frozen, each image's tokens entering block 21 are computed once and stored (fp16, ~12.5 GB), and training runs only the last 4 blocks.
 """))
-    A(code('# TODO: LoRA layers, stored block outputs, training loop (RUN["F"])'))
-    A(md("## 8. Re-check of the main comparison (3 seeds)\n\nTODO: A against the best model with seeds 0, 1, 2."))
+    A(code(module_code("src/lora_clip.py")))
+    A(code(module_code("src/train_f.py")))
+    A(code('''
+START, F_CONFIGS = 20, {"F1_1": [23], "F1_4": [20, 21, 22, 23]}
+tok_file = WORK / "tokens_b20.f16"
+if RUN["F"]:
+    clip_model, preprocess = load_clip(DEVICE)
+    visual = clip_model.visual.float()
+    if not tok_file.exists():
+        cache = np.memmap(tok_file, np.float16, "w+", shape=(len(df), 257, visual.transformer.width))
+        with torch.no_grad():
+            for b in range(0, len(df), 64):
+                x = torch.stack([preprocess(Image.open(q).convert("RGB")) for q in df.path[b:b + 64]]).to(DEVICE)
+                cache[b:b + 64] = tokens_before(visual, x, START).cpu().numpy().astype(np.float16)
+        cache.flush()
+    cache = np.memmap(tok_file, np.float16, "r", shape=(len(df), 257, visual.transformer.width))
+
+def run_F(blocks, adversary, seed=C.SEED):
+    """Same protocol as E: epochs chosen on the validation fold (rule v3), refit on 4 folds."""
+    pred, recs = np.full(len(ages), np.nan), []
+    for k in range(C.N_FOLDS):
+        v = (k + 1) % C.N_FOLDS
+        tr_in, va, tr_all, te = (folds != k) & (folds != v), folds == v, folds != k, folds == k
+        rA = refA[k]
+        i = grid_settings(GRID_A).index({kk: rA["chosen"][kk] for kk in GRID_A})
+        sA = {**FIXED_A, **rA["chosen"]}
+        st_in, st_all = Standardiser().fit(X[tr_in]), Standardiser().fit(X[tr_all])
+        ref_fn, vpA, _ = fit_head(st_in(X[tr_in]), ages[tr_in], sA, rA["epochs"], seed + 1000 * k + i, DEVICE, st_in(X[va]))
+        ref = group_fpr_mae(vpA[-1], ages[va], groups[va]); ref["tpr"] = group_tpr(vpA[-1], ages[va], groups[va])
+        refit_fn, _, _ = fit_head(st_all(X[tr_all]), ages[tr_all], sA, rA["epochs"], seed + 1000 * k, DEVICE)
+        r_in, r_va, r_all, r_te = (np.flatnonzero(m) for m in (tr_in, va, tr_all, te))
+        _, vp, _ = fit_f(cache, r_in, ages[r_in], groups[r_in], ref_fn, st_in.mu, st_in.sd, visual, START, blocks,
+                         FIXED_F, FIXED_F["max_epochs"], seed + 1000 * k, DEVICE, rows_val=r_va, adversary=adversary)
+        stats = [selection_stats_v3(p_, ages[r_va], groups[r_va], ref) for p_ in vp]
+        best = min(range(len(stats)), key=lambda e: rank_key(stats[e], "v3"))
+        fn, _, info = fit_f(cache, r_all, ages[r_all], groups[r_all], refit_fn, st_all.mu, st_all.sd, visual, START,
+                            blocks, FIXED_F, best + 1, seed + 1000 * k, DEVICE, adversary=adversary)
+        pred[r_te] = fn(r_te)
+        recs.append({"test_fold": k, "chosen": {"lora_blocks": blocks}, "epochs": best + 1, "batch": FIXED_F["batch_size"],
+                     "inner_val_worst_group_tpr": stats[best]["worst_group_tpr"],
+                     "test_mae": float(np.abs(pred[r_te] - ages[r_te]).mean()), "seconds": sum(info["epoch_seconds"])})
+        print(f"fold {k}: {best + 1} epochs, test MAE {recs[-1]['test_mae']:.2f}")
+    return pred, recs
+
+if RUN["F"]:
+    for name, blocks in F_CONFIGS.items():
+        predF, RECORDS[name] = run_F(blocks, adversary=False)
+        dF, RESULTS[name] = evaluate(name, predF)
+        PAIRED[name] = paired_vs_A(dA, dF, plan)
+    best_f1 = max(F_CONFIGS, key=lambda n: np.mean([r["inner_val_worst_group_tpr"] for r in RECORDS[n]]))
+    predF2, RECORDS["F2"] = run_F(F_CONFIGS[best_f1], adversary=True)
+    dF2, RESULTS["F2"] = evaluate("F2", predF2)
+    PAIRED["F2"] = paired_vs_A(dA, dF2, plan)
+    display(pd.DataFrame([row(m, RESULTS[m], PAIRED.get(m)) for m in RESULTS]))
+'''))
+    A(md("**After running** — **I observed:** TODO (F results). **Interpretation:** TODO."))
+    A(md("## 8. Re-check of the main comparison (3 seeds)\n\nThe key comparison (A against the best model) is repeated with seeds 1 and 2 (seed 0 is the main run): new random initialisation and batch order, same folds and rule. Set `BEST` to the best model after Section 7."))
+    A(code('''
+BEST = "E_inv"          # set to the best model after Section 7 (e.g. "F1_4")
+if RUN["recheck"]:
+    rows_rc = []
+    for seed in (0, 1, 2):
+        pA_s, recA_s = oof_predictions(X, ages, folds, GRID_A, FIXED_A, DEVICE, seed=seed, groups=groups, select="mae")
+        refA_s = [{"chosen": r["chosen"], "epochs": r["epochs"], "inner_val_mae": r["inner_val_mae"]} for r in recA_s]
+        if BEST == "E_inv":
+            pB_s, _ = oof_predictions(X, ages, folds, GRID_E, FIXED_E, DEVICE, seed=seed, groups=groups,
+                                      select="worst_group_v3", ref_A=refA_s, probe_out={})
+        else:
+            refA_saved, refA = refA, refA_s
+            pB_s, _ = run_F(F_CONFIGS.get(BEST, F_CONFIGS["F1_4"]), adversary=(BEST == "F2"), seed=seed)
+            refA = refA_saved
+        dA_s, dB_s = prepare(frame(df.id.values, groups, ages, pA_s)), prepare(frame(df.id.values, groups, ages, pB_s))
+        r = paired_vs_A(dA_s, dB_s, plan)["gap_reduction_A_minus_M"]
+        rows_rc.append({"seed": seed, "gap A": round(model_report(dA_s, plan)["tpr_gap_W_minus_B"]["est"], 3),
+                        f"gap {BEST}": round(model_report(dB_s, plan)["tpr_gap_W_minus_B"]["est"], 3),
+                        "reduction (95% CI)": f"{r['est']:+.3f} ({r['ci'][0]:+.3f} to {r['ci'][1]:+.3f})"})
+    display(pd.DataFrame(rows_rc))
+'''))
 
     A(md("""
 ## 9. Follow-up questions
 
 ### 9.1 Follow-up 1
-**Observation it came from:** TODO (E's adversary fell to chance while the probe still read race).
+**Observation it came from:** E's adversary fell to chance while a new probe still read race at 0.82.
 1. **I wonder:** if the adversary is pushed much harder, ignoring the cost limits, is race removed, and does the gap close?
 2. **I predict, because:** the probe drops well below A's 0.82 and age error passes +0.5 years, but the gap shrinks far less than the race signal and the Black − White over-estimation stays above 0, because what makes Black teenagers look older is age cues in CLIP, not a separate race signal.
 3. **To check, I will change** only the adversary's target and weight (8 fixed settings from λ = 0 to 10, 60 epochs each, no tuning) **and keep** everything else fixed.
@@ -614,10 +719,10 @@ if RUN["followup1"]:
                     "race probe": round(summarise({"model": probe}, groups)["bal_acc"]["model"]["est"], 3)})
     display(pd.DataFrame(fu1))
 '''))
-    A(md("**I observed:** TODO. **Interpretation:** TODO. **Not yet certain:** TODO."))
+    A(md("**I observed:** in all 8 settings a new probe still reads race at 0.805–0.822 (threshold for 'race removed' 0.40), although the adversary itself was held near 0.50 or pushed to chance. Gaps range from 9.6 to 12.0 points and no setting narrows the gap significantly against A or against the λ = 0 control; the strongest settings raise MAE by 0.7–1.0 years and lower detection for both groups. **Interpretation:** adversarial training on a frozen head fools its adversary instead of removing race; my prediction that the probe would drop was wrong. **Not yet certain:** whether actually removing race would close the gap; this became follow-up 2."))
     A(md("""
 ### 9.2 Follow-up 2
-**Observation it came from:** TODO (follow-up 1 could not remove race with an adversary).
+**Observation it came from:** follow-up 1 could not remove race with an adversary at any strength.
 1. **I wonder:** if linear race information is actually removed from CLIP's embeddings, does the White–Black age gap close, or does it stay wide?
 2. **I predict, because:** the gap closes: once linear race information is removed, the gap falls to about 3 points or less with age error within +0.5 years, because linear race information is the real culprit.
 3. **To check, I will change** only the input, with LEACE concept erasure fitted on each fold's training rows, **and keep** model A's exact procedure fixed.
@@ -653,9 +758,46 @@ if RUN["followup2"]:
                     "linear probe": round(pr["linear"]["est"], 3), "MLP probe": round(pr["mlp"]["est"], 3)})
     display(pd.DataFrame(fu2))
 '''))
-    A(md("**I observed:** TODO. **Interpretation:** TODO. **Not yet certain:** TODO."))
+    A(md("**I observed:** LEACE removed linear race information completely (linear probe 0.200, exactly chance) at no cost in age error (MAE −0.03 years). The gap stayed at 10.0 points (95% CI 6.7 to 13.2; reduction 0.9 points, CI −1.1 to 2.9) and Black minors were still over-estimated by 1.9 years more than White minors. **Interpretation:** the bias is not carried by a linear race direction in CLIP's embeddings; my prediction that the gap would close was wrong. **Not yet certain:** race is still readable non-linearly (MLP probe 0.81) and the age head partly rebuilds it (0.60), so this test cannot separate a non-linear race signal from age cues that differ between groups. Changing CLIP itself (F1, F2) is the next test."))
 
-    A(md("## 10. Visual cases and demo (ICCWD)\n\nTODO: a few clearly harmless ICCWD scenes run through A and the best model: predicted age, child/adult decision and the CLS attention map (layer, head average and query token stated). The photos are shown as they are (no captions or links), and the images are never stored in git. The same cell is the demo shown in the video."))
+    A(md("""
+## 10. Real web photos (ICCWD): overall check and demo
+
+ICCWD has no age or race labels, so it cannot measure the gap. It checks whether a model trained on face crops still finds children in ordinary web photos (child / no-child labels by the dataset authors). The final models are trained on all of UTKFace with A's most frequently chosen setting and the median chosen number of epochs. The images were downloaded to Google Drive with the authors' script (notebook 09); this section runs on Colab. The demo shows a few clearly harmless scenes as they are, with no captions or links.
+"""))
+    A(code('''
+RUN_ICCWD = False
+DEMO_ROWS = []          # row numbers of a few clearly harmless ICCWD scenes, picked by me
+if RUN_ICCWD:
+    from google.colab import drive
+    drive.mount("/content/drive")
+    IC = Path("/content/drive/MyDrive/robust_child_filtering_model/iccwd")
+    ic = pd.read_csv(hf_hub_download("amcretu/iccwd", "image_caption_children_in_the_wild_dataset.csv", repo_type="dataset",
+                                     revision="9f76b200c40a8a88c19dc17af8b842581f10f5f5"))
+    ic["file"] = [IC / "images" / f"{i}.jpg" for i in range(len(ic))]
+    ic = ic[ic.file.map(Path.exists) & ic.label.isin(["Final_Child", "Final_NoChild"])].reset_index(drop=True)
+    clip_model, preprocess = load_clip(DEVICE)
+    Xi = []
+    with torch.no_grad():
+        for b in range(0, len(ic), 64):
+            x = torch.stack([preprocess(Image.open(f).convert("RGB")) for f in ic.file[b:b + 64]]).to(DEVICE)
+            Xi.append(clip_model.encode_image(x).float().cpu().numpy())
+    Xi = np.concatenate(Xi)
+    from collections import Counter
+    chosen = Counter(json.dumps(r["chosen"], sort_keys=True) for r in refA).most_common(1)[0][0]
+    sA = {**FIXED_A, **json.loads(chosen)}
+    epochs_A = int(np.median([r["epochs"] for r in refA]))
+    st_full = Standardiser().fit(X)
+    A_full, _, _ = fit_head(st_full(X), ages, sA, epochs_A, C.SEED, DEVICE)
+    ic["pred_A"] = A_full(st_full(Xi))
+    is_child = ic.label == "Final_Child"
+    print(f"ICCWD (n={len(ic)}): A flags {np.mean(ic.pred_A[is_child] < 18):.3f} of photos with a child (TPR) "
+          f"and {np.mean(ic.pred_A[~is_child] < 18):.3f} of photos without one (FPR)")
+    for i in DEMO_ROWS:                                         # demo: a few clearly harmless scenes, shown as they are
+        plt.figure(figsize=(4, 4)); plt.imshow(Image.open(ic.file[i]).convert("RGB")); plt.axis("off")
+        plt.title(f"label: {'child' if is_child[i] else 'no child'} | A: age {ic.pred_A[i]:.0f} -> "
+                  f"{'child' if ic.pred_A[i] < 18 else 'adult'}"); plt.show()
+'''))
     A(md("## 11. Failure cases, limits and conclusion\n\nTODO."))
     A(md("## 12. Experiment log"))
     A(code('''
@@ -663,16 +805,25 @@ log_rows = []
 for name, recs in RECORDS.items():
     for r in recs:
         log_rows.append({"run": name, "test fold": r["test_fold"], "chosen setting": r["chosen"], "epochs": r["epochs"],
-                         "updates": r["epochs"] * math.ceil((folds != r["test_fold"]).sum() / 256),
-                         "batch": 256, "seed": f"{C.SEED} + 1000 x fold", "seconds": r["seconds"], "device": DEVICE})
+                         "updates": r["epochs"] * math.ceil((folds != r["test_fold"]).sum() / r.get("batch", 256)),
+                         "batch": r.get("batch", 256), "seed": f"{C.SEED} + 1000 x fold", "seconds": r["seconds"], "device": DEVICE})
 display(pd.DataFrame(log_rows))
 '''))
     A(md("""
 ## 13. Sources and AI use
 
-TODO: final list. Crețu et al. (IEEE S&P 2026); Kireev, Crețu et al. (ICCWD, 2025); Radford et al. (CLIP, 2021); Dosovitskiy et al. (ViT, 2021); Goodfellow et al. (GAN, 2014); Ganin and Lempitsky (2015); Zhang, Lemoine and Mitchell (2018); Isola et al. (pix2pix, 2017); Hu et al. (LoRA, 2022); Belrose et al. (LEACE, 2023); Gokhale et al. (2021).
+- Crețu et al., *Evaluating concept filtering defenses against child sexual abuse material generation by text-to-image models*, IEEE S&P 2026 (arXiv 2512.05707): motivation and the detectors' age-18 rule.
+- Kireev, Crețu et al., *A manually annotated image-caption dataset for detecting children in the wild* (ICCWD), arXiv 2506.10117, and their download script (spring-epfl/iccwd): the real-photo check.
+- Zhang, Song and Qi, *Age progression/regression by conditional adversarial autoencoder*, CVPR 2017: UTKFace.
+- Radford et al., *Learning transferable visual models from natural language supervision* (CLIP), ICML 2021; Dosovitskiy et al., *An image is worth 16x16 words* (ViT), ICLR 2021: the backbone.
+- Goodfellow et al., *Generative adversarial nets*, NeurIPS 2014; Ganin and Lempitsky, ICML 2015; Zhang, Lemoine and Mitchell, AIES 2018; Isola et al., pix2pix, CVPR 2017: adversarial training and the L1 + adversarial loss.
+- Elazar and Goldberg, *Adversarial removal of demographic attributes from text data*, EMNLP 2018: why a fooled adversary does not mean race is gone.
+- Belrose et al., *LEACE: perfect linear concept erasure in closed form*, NeurIPS 2023: follow-up 2.
+- Hu et al., *LoRA: low-rank adaptation of large language models*, ICLR 2022; Zanella and Ben Ayed, *Low-rank few-shot adaptation of vision-language models*, CVPRW 2024: model F.
+- Gokhale et al., arXiv 2104.01781 (2021): closest earlier work (adversarial debiasing of age estimates on UTKFace).
+- Castleman and Korolova, *Adultification bias in LLMs and text-to-image models*, FAccT 2025: the same bias on the generation side.
 
-**AI use:** TODO (one line: what the assistant did and what I checked myself).
+**AI use:** an AI coding assistant (Claude) helped draft code, tests and text; I chose the question, wrote down my predictions before each run, ran the experiments and checked the results myself. *(Draft: confirm or edit.)*
 """))
     nb = {"cells": cells,
           "metadata": {"accelerator": "GPU", "colab": {"gpuType": "T4", "provenance": []},

@@ -84,7 +84,8 @@ def test_notebook_cells_parse_and_style():
                                 if not l.lstrip().startswith(("!", "%"))))
     text = json.dumps(nb)
     assert "[202555404] [Isaac Mutuma]" in text and "I predict, because" in text
-    assert "drive.mount" not in text          # nothing from Isaac's Drive is needed
+    mounts = [c for c in nb["cells"] if "drive.mount" in "".join(c["source"])]
+    assert len(mounts) == 1 and "RUN_ICCWD = False" in "".join(mounts[0]["source"])   # Drive only for the opt-in ICCWD part
 
 
 if __name__ == "__main__":
