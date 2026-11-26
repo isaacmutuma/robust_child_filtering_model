@@ -100,6 +100,10 @@ def fit_f(cache, rows_tr, ytr, gtr, A_fn, mu, sd, visual, start, lora_blocks, cf
         ce_fn = nn.CrossEntropyLoss()
         info["adv_bal_acc_by_epoch"] = []
     use_amp = device == "cuda"
+    # fp16 autocast needs loss scaling: without it the LoRA gradients of earlier blocks
+    # (~5e-5) fall under fp16's smallest normal number and lose their direction
+    # (measured 26 Nov 2026: cosine with fp32 gradients 0.1 in block 20, 1.0 in block 23).
+    scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
     val_preds = [] if rows_val is not None else None
     rows_tr = np.asarray(rows_tr)
     for ep in range(epochs):
@@ -113,10 +117,11 @@ def fit_f(cache, rows_tr, ytr, gtr, A_fn, mu, sd, visual, start, lora_blocks, cf
                 if adversary:
                     z = model.z(t).float()
                     rid = torch.tensor([gid[r] for r in srt], device=device)
-                    for _ in range(cfg["adv_steps"]):
-                        opt_adv.zero_grad()
-                        ce_fn(adv(z.detach()), rid).backward()
-                        opt_adv.step()
+                    with torch.autocast("cuda", enabled=False):      # adversary steps in fp32
+                        for _ in range(cfg["adv_steps"]):
+                            opt_adv.zero_grad()
+                            ce_fn(adv(z.detach()), rid).backward()
+                            opt_adv.step()
                     out = model.head[2:](z).squeeze(1)
                     logits = adv(z)
                     loss = loss_fn(out, y) - cfg["adv_lambda"] * ce_fn(logits, rid)
@@ -124,8 +129,9 @@ def fit_f(cache, rows_tr, ytr, gtr, A_fn, mu, sd, visual, start, lora_blocks, cf
                 else:
                     loss = loss_fn(model(t).float(), y)
             opt.zero_grad()
-            loss.backward()
-            opt.step()
+            scaler.scale(loss).backward()
+            scaler.step(opt)
+            scaler.update()
         info["epoch_seconds"].append(round(time.time() - t0, 1))
         if adversary:
             info["adv_bal_acc_by_epoch"].append(float(np.mean(np.diag(conf) / np.maximum(conf.sum(1), 1))))
