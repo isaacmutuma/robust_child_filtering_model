@@ -39,6 +39,64 @@ def followup3_code():
     return "DEPTHS = " + head + "\n\n\n" + code
 
 
+LAYER_FIG = r'''# figure: one panel per measure, CLS and mean-patch readouts across depth; F's LoRA blocks shaded;
+# grey diamond = linear readout of the final CLIP embedding (with 95% CI)
+COL = {"cls": "#257de0", "mean": "#f47230"}
+MARK = {"cls": "o", "mean": "s"}
+LABEL = {"cls": "CLS token", "mean": "mean patch token"}
+panels = [("tpr_gap_W_minus_B", "White − Black TPR gap (minors)"),
+          ("age_err_gap_B_minus_W_age_matched", "Black − White age over-estimation,\nage-matched (years)"),
+          ("race_probe_bal_acc", "race readable by a linear probe\n(balanced accuracy, chance 0.20)")]
+fig, axes = plt.subplots(1, 3, figsize=(15, 4.2))
+for ax, (key, title) in zip(axes, panels):
+    ax.axvspan(19.5, 24.5, color="#000000", alpha=0.06, lw=0)
+    for pool in POOLS:
+        ls = [l for l in range(DEPTHS) if f"{pool}_{l}" in LAYERS]
+        est = np.array([LAYERS[f"{pool}_{l}"][key]["est"] for l in ls])
+        ci_ = np.array([LAYERS[f"{pool}_{l}"][key]["ci"] for l in ls], float)
+        ax.fill_between(ls, ci_[:, 0], ci_[:, 1], color=COL[pool], alpha=0.15, lw=0)
+        ax.plot(ls, est, color=COL[pool], lw=2, marker=MARK[pool], ms=4, label=LABEL[pool])
+    fin = LAYERS["final_embedding"][key]
+    ax.errorbar([26.5], [fin["est"]], yerr=[[fin["est"] - fin["ci"][0]], [fin["ci"][1] - fin["est"]]],
+                fmt="D", color="#555555", ms=6, capsize=3, lw=1.2)
+    ax.set_xticks([0, 5, 10, 15, 20, 24, 26.5]); ax.set_xticklabels(["0", "5", "10", "15", "20", "24", "final\nemb."])
+    if key != "race_probe_bal_acc":
+        ax.axhline(0, color="#999999", lw=0.8)
+    ax.set_title(title, fontsize=10); ax.set_xlabel("depth (block of CLIP ViT-L/14)")
+    ax.set_xlim(-0.5, 28); ax.grid(axis="y", color="#e6e6e6", lw=0.6)
+    for sp in ("top", "right"):
+        ax.spines[sp].set_visible(False)
+    lo, hi = ax.get_ylim()
+    ax.text(22, hi, "blocks F fine-tunes", ha="center", va="top", fontsize=8, color="#333333")
+h, l = axes[0].get_legend_handles_labels()
+fig.legend(h + [plt.Line2D([], [], color="#555555", marker="D", ls="")], l + ["linear readout of the final CLIP embedding"],
+           loc="upper center", ncol=3, frameon=False, fontsize=9)
+plt.tight_layout(rect=(0, 0, 1, 0.92)); plt.show()'''
+
+TEEN_FIG = r'''# figure: teenagers (10-17) flagged as children, per group and model, with 95% CIs
+FIG_MODELS = ["A", "E_inv", "F1_1", "F1_4", "F2"]
+FIG_NAMES = {"A": "A\nbaseline", "E_inv": "E\nadversary", "F1_1": "F1-1\nLoRA, 1 block",
+             "F1_4": "F1-4\nLoRA, 4 blocks", "F2": "F2\nLoRA + adversary"}
+GCOL = {"White": "#257de0", "Black": "#f47230", "Asian": "#00b894", "Indian": "#f2a600"}
+GMARK = {"White": "o", "Black": "s", "Asian": "^", "Indian": "D"}
+OFF = {"White": -0.24, "Asian": -0.08, "Indian": 0.08, "Black": 0.24}
+fig, ax = plt.subplots(figsize=(9, 4.4))
+for g in ["White", "Asian", "Indian", "Black"]:
+    est = np.array([FIG_RESULTS[m]["by_group"][g]["tpr_teen"]["est"] for m in FIG_MODELS])
+    ci_ = np.array([FIG_RESULTS[m]["by_group"][g]["tpr_teen"]["ci"] for m in FIG_MODELS], float)
+    ax.errorbar(np.arange(len(FIG_MODELS)) + OFF[g], est, yerr=[est - ci_[:, 0], ci_[:, 1] - est], fmt=GMARK[g],
+                color=GCOL[g], ms=7, capsize=3, lw=1.5,
+                label=f"{g} (n = {FIG_RESULTS['A']['by_group'][g]['n_teen_10_17']})")
+ax.set_xticks(range(len(FIG_MODELS))); ax.set_xticklabels([FIG_NAMES[m] for m in FIG_MODELS], fontsize=9)
+ax.set_ylabel("share of 10-17-year-olds flagged as children"); ax.set_ylim(0, 1)
+ax.set_title("Teenagers detected, by group and model (95% CI)", fontsize=11)
+ax.grid(axis="y", color="#e6e6e6", lw=0.6)
+for sp in ("top", "right"):
+    ax.spines[sp].set_visible(False)
+ax.legend(frameon=False, fontsize=9, ncol=4, loc="upper center", bbox_to_anchor=(0.5, -0.2))
+plt.tight_layout(); plt.show()'''
+
+
 CONSTANTS = '''# Fixed settings (chosen before any model was trained; same for every condition)
 from types import SimpleNamespace
 C = SimpleNamespace(
@@ -398,7 +456,7 @@ def build():
 | **6. Experiments** | A and E, each started with the three sentences |
 | **7. Fine-tuning (F1-1, F1-4, F2)** | LoRA inside CLIP |
 | **8. Re-check** | Main comparison with 3 seeds |
-| **9. Follow-up questions** | Two questions that came from my results |
+| **9. Follow-up questions** | Three questions that came from my results (9.3: where in CLIP the bias appears) |
 | **10. Visual cases and demo** | A few clearly harmless ICCWD photos run through the models |
 | **11. Limits and conclusion** | |
 | **12. Experiment log** | Settings, epochs, updates, seeds and run time of every run |
@@ -406,6 +464,17 @@ def build():
 **Ethics.** No images of children are generated. UTKFace photos are only read by the model and never shown. Real photos appear only in Step 10: a few clearly harmless ICCWD scenes, shown as they are; no captions or links.
 """))
 
+    A(md("""
+## Question, prediction and success criteria
+
+**Why.** Datasets for text-to-image models are filtered with automatic child detectors, to lower the risk that the models learn to generate child sexual abuse material (Crețu et al., 2026). In my earlier audit on UTKFace, all five detectors I tested missed Black minors more often than White minors, by 4 to 10 points after adjusting for age, mostly among 10 to 17-year-olds, whom they judge older than they are.
+
+**Question.** If I build a child/adult classifier on CLIP, can I make it as accurate for Black teenagers as for White teenagers by training only on top of CLIP's frozen features, or do I have to change CLIP itself?
+
+**Prediction (written before the experiments).** An adversary on top of the frozen features (E) will have only a small effect, and a probe will still read race from its features, because the bias is already in CLIP's embeddings. Fine-tuning CLIP's last blocks with LoRA (F) has the best chance of narrowing the gap, but may overfit, because there are only 126 Black teenagers.
+
+**Success criteria (fixed before any model was trained).** A model *closes* the gap if (1) its gap is significantly smaller than A's (one-sided paired bootstrap, Holm-corrected p < 0.05), (2) the gap is at most 3 points and clearly below A's, (3) adult false alarms stay at most 5% in every group and at most 2 points above A's, and (4) age error rises by at most 0.5 years (upper CI bound). It *narrows* the gap if (1), (3) and (4) hold.
+"""))
     A(md("## 0. Setup\n\nRuns on Colab (Runtime → Change runtime type → T4) or in Jupyter on the course GPU server (set `GPU_ID` below to your assigned GPU). Section 10 needs the ICCWD photos on Google Drive, so it runs on Colab. Approximate time on a T4: data and CLIP features 25 min, A 5 min, E 90 min, follow-up 1 60 min, follow-up 2 25 min; fine-tuning (F1-1, F1-4, F2) about 2 hours on the server's RTX A5000, or it loads the saved F predictions when `RUN[\"F\"]` is False. Set a part to `False` to skip it."))
     A(code("""
 import datetime
@@ -690,6 +759,11 @@ display(pd.DataFrame([row(m, RESULTS[m], PAIRED.get(m)) for m in RESULTS]))
 **Interpretation:** letting CLIP's last blocks change improves age error a little but leaves the group difference where it was. My F2 prediction was wrong: even when CLIP itself can change, the adversary is fooled and the gap does not move. Why fine-tuning cannot reach the bias is follow-up 3 (Section 9.3).
 **A bug I found and fixed.** My first F run (25 Nov) trained in half precision (fp16) without loss scaling. In the earlier LoRA blocks the gradients (about 5·10⁻⁵) fell below fp16's smallest normal number and lost their direction: their cosine with full-precision gradients was between −0.1 and 0.3 in blocks 20–21, against 0.96–1.00 in block 23. I added a gradient scaler (`torch.amp.GradScaler`) and reran all three conditions; the numbers above are from the rerun (its JSONs record commit c131300 with this one file changed, committed afterwards as e932332). The first run led to the same conclusion (F1-4 even widened the gap by 2.0 points).
 **Not yet certain:** F is compared with A rebuilt on the server (gap 10.5 points, against 11.0 on Colab; GPU arithmetic is not bit-for-bit repeatable); only one LoRA rank, learning rate and adversary weight were tried, and F ran once (seed 0)."""))
+    A(md("### 7.3 Figure: teenagers detected, by group and model\n\nOne point per group and model with its 95% CI. Models not run in this session are loaded from their committed result files."))
+    A(code('''
+FIG_RESULTS = {m: RESULTS[m] if m in RESULTS else committed(f"models/{m}.json")["report"]
+               for m in ["A", "E_inv", "F1_1", "F1_4", "F2"]}
+''' + TEEN_FIG))
     A(md("## 8. Re-check of the main comparison (3 seeds)\n\nThe key comparison (A against the best model) is repeated with seeds 1 and 2 (seed 0 is the main run): new random initialisation and batch order, same folds and rule. Set `BEST` to the best model after Section 7."))
     A(code('''
 BEST = "E_inv"          # largest point reduction in Section 7 (E_inv +0.4 points, F2 +0.1); none significant
@@ -826,39 +900,7 @@ else:
     LAYERS, READING = saved["results"], saved["reading_cls"]
 print("reading rule (CLS):", READING["case"])
 
-# figure: one panel per measure, CLS and mean-patch readouts across depth; F's LoRA blocks shaded;
-# grey diamond = linear readout of the final CLIP embedding (with 95% CI)
-COL = {"cls": "#257de0", "mean": "#f47230"}
-MARK = {"cls": "o", "mean": "s"}
-LABEL = {"cls": "CLS token", "mean": "mean patch token"}
-panels = [("tpr_gap_W_minus_B", "White − Black TPR gap (minors)"),
-          ("age_err_gap_B_minus_W_age_matched", "Black − White age over-estimation,\\nage-matched (years)"),
-          ("race_probe_bal_acc", "race readable by a linear probe\\n(balanced accuracy, chance 0.20)")]
-fig, axes = plt.subplots(1, 3, figsize=(15, 4.2))
-for ax, (key, title) in zip(axes, panels):
-    ax.axvspan(19.5, 24.5, color="#000000", alpha=0.06, lw=0)
-    for pool in POOLS:
-        ls = [l for l in range(DEPTHS) if f"{pool}_{l}" in LAYERS]
-        est = np.array([LAYERS[f"{pool}_{l}"][key]["est"] for l in ls])
-        ci_ = np.array([LAYERS[f"{pool}_{l}"][key]["ci"] for l in ls], float)
-        ax.fill_between(ls, ci_[:, 0], ci_[:, 1], color=COL[pool], alpha=0.15, lw=0)
-        ax.plot(ls, est, color=COL[pool], lw=2, marker=MARK[pool], ms=4, label=LABEL[pool])
-    fin = LAYERS["final_embedding"][key]
-    ax.errorbar([26.5], [fin["est"]], yerr=[[fin["est"] - fin["ci"][0]], [fin["ci"][1] - fin["est"]]],
-                fmt="D", color="#555555", ms=6, capsize=3, lw=1.2)
-    ax.set_xticks([0, 5, 10, 15, 20, 24, 26.5]); ax.set_xticklabels(["0", "5", "10", "15", "20", "24", "final\\nemb."])
-    if key != "race_probe_bal_acc":
-        ax.axhline(0, color="#999999", lw=0.8)
-    ax.set_title(title, fontsize=10); ax.set_xlabel("depth (block of CLIP ViT-L/14)")
-    ax.set_xlim(-0.5, 28); ax.grid(axis="y", color="#e6e6e6", lw=0.6)
-    for sp in ("top", "right"):
-        ax.spines[sp].set_visible(False)
-    lo, hi = ax.get_ylim()
-    ax.text(22, hi, "blocks F fine-tunes", ha="center", va="top", fontsize=8, color="#333333")
-h, l = axes[0].get_legend_handles_labels()
-fig.legend(h + [plt.Line2D([], [], color="#555555", marker="D", ls="")], l + ["linear readout of the final CLIP embedding"],
-           loc="upper center", ncol=3, frameon=False, fontsize=9)
-plt.tight_layout(rect=(0, 0, 1, 0.92)); plt.show()
+''' + LAYER_FIG + '''
 
 show = ["final_embedding"] + [f"cls_{l}" for l in (1, 4, 8, 12, 16, 20, 23, 24)]
 display(pd.DataFrame([{"readout": n, "gap": round(LAYERS[n]["tpr_gap_W_minus_B"]["est"], 3),
@@ -943,6 +985,7 @@ display(pd.DataFrame(log_rows))
 - Elazar and Goldberg, *Adversarial removal of demographic attributes from text data*, EMNLP 2018: why a fooled adversary does not mean race is gone.
 - Belrose et al., *LEACE: perfect linear concept erasure in closed form*, NeurIPS 2023: follow-up 2.
 - Hu et al., *LoRA: low-rank adaptation of large language models*, ICLR 2022; Zanella and Ben Ayed, *Low-rank few-shot adaptation of vision-language models*, CVPRW 2024: model F.
+- Sagawa et al., *Distributionally robust neural networks for group shifts*, ICLR 2020: group DRO (context models C and C2).
 - Gokhale et al., arXiv 2104.01781 (2021): closest earlier work (adversarial debiasing of age estimates on UTKFace).
 - Castleman and Korolova, *Adultification bias in LLMs and text-to-image models*, FAccT 2025: the same bias on the generation side.
 
