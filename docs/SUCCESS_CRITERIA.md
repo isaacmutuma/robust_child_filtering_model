@@ -63,3 +63,5 @@ Normal approximation at TPR ≈ 0.85, α = 0.05 two-sided, 80% power:
 - All models are reported, including those that fail. There is no selective reporting.
 - Figures show charts only. No faces, embeddings, image ids or per-image outputs go into git.
 - FairFace is used only as extra training data (in the data variants). FairFace's validation set is not used as an evaluation set here, because it has no ages 10–17, where the gap is.
+
+*Amendment 2026-11-26 (Isaac, Decision Log):* the demo (not an evaluation and not a success criterion) shows UTKFace children's faces with their exact ages and out-of-fold model verdicts in the executed notebook, report and video; faces never go into git (replaces the 'charts only, no faces' line in §6 for the demo). FairFace train is also used as extra training data in follow-up 4 (screening). The success criteria above are unchanged.

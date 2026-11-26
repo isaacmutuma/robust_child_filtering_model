@@ -64,3 +64,5 @@ Most likely overall: no method fully closes the gap. Balanced sampling, group DR
 - No images, embeddings, folds with image ids, or per-image outputs in git. They stay on Drive.
 - Charts only in figures, demo and slides; no faces.
 - Group labels are the datasets' own; never a model's prediction of race.
+
+*Amendment 2026-11-26 (Isaac, CLAUDE.md Decision Log):* the demo shows UTKFace children's faces with their exact ages and A/E out-of-fold verdicts (fixed random draw, seed 0) in the notebook outputs, report and video, never in git; this replaces the 'no faces' rule above and the ICCWD scenes (19-24 Nov). Plan: `docs/DEMO_FACES.md`.
