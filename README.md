@@ -19,6 +19,8 @@ Automated child detectors used to filter text-to-image training data (Crețu et 
 - CLIP ViT-L/14, OpenAI weights: `timm/vit_large_patch14_clip_224.openai` @ `18d05354`, SHA-256 `9ce2e8a8…`, loaded with QuickGELU (checked).
 - ICCWD (only for Section 10): labels `amcretu/iccwd` @ `9f76b200`; images fetched from their original URLs with the authors' script (`notebooks/09_iccwd_fetch.ipynb`), kept on Google Drive, never in git.
 
+**Run it on the course GPU server (unattended):** `bash scripts/server_submission_run.sh <GPU_ID> "<demo image numbers>"` fetches ICCWD with the dataset authors' pinned script into a temporary folder, executes the notebook (re-check and ICCWD on; F and follow-up 3 load their saved results), writes the executed notebook to `~/submission/` (outside the repository, because it shows the demo photos), and deletes the ICCWD copy afterwards. Progress: `bash scripts/server_submission_status.sh`.
+
 **Experiment log:** Section 12 of the notebook (settings, epochs, updates, batch size, seed, run time and device for every run); the aggregate result files with their git commit are in `results/`.
 
 **Layout:** `configs/config.py` (paths, pins, frozen constants) · `src/` (CLIP loader with QuickGELU check, data, folds) · `scripts/` (Colab steps) · `notebooks/` · `results/` (aggregate JSON only) · `tests/`.

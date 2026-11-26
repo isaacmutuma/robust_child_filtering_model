@@ -477,7 +477,7 @@ def build():
 
 **Success criteria (fixed before any model was trained).** A model *closes* the gap if (1) its gap is significantly smaller than A's (one-sided paired bootstrap, Holm-corrected p < 0.05), (2) the gap is at most 3 points and clearly below A's, (3) adult false alarms stay at most 5% in every group and at most 2 points above A's, and (4) age error rises by at most 0.5 years (upper CI bound). It *narrows* the gap if (1), (3) and (4) hold.
 """))
-    A(md("## 0. Setup\n\nRuns on Colab (Runtime → Change runtime type → T4) or in Jupyter on the course GPU server (set `GPU_ID` below to your assigned GPU). Section 10 needs the ICCWD photos on Google Drive, so it runs on Colab. Approximate time on a T4: data and CLIP features 25 min, A 5 min, E 90 min, follow-up 1 60 min, follow-up 2 25 min; fine-tuning (F1-1, F1-4, F2) about 2 hours on the server's RTX A5000, or it loads the saved F predictions when `RUN[\"F\"]` is False. Set a part to `False` to skip it."))
+    A(md("## 0. Setup\n\nRuns on Colab (Runtime → Change runtime type → T4) or in Jupyter on the course GPU server (set `GPU_ID` below to your assigned GPU). Section 10 needs the ICCWD photos: from Google Drive on Colab, or from a temporary copy on the server (`ICCWD_DIR`). Approximate time on a T4: data and CLIP features 25 min, A 5 min, E 90 min, follow-up 1 60 min, follow-up 2 25 min; fine-tuning (F1-1, F1-4, F2) about 2 hours on the server's RTX A5000, or it loads the saved F predictions when `RUN[\"F\"]` is False. Set a part to `False` to skip it."))
     A(code("""
 import datetime
 print("This code is written at " + str(datetime.datetime.now()))
@@ -918,17 +918,25 @@ display(pd.DataFrame([{"readout": n, "gap": round(LAYERS[n]["tpr_gap_W_minus_B"]
     A(md("""
 ## 10. Real web photos (ICCWD): overall check and demo
 
-ICCWD has no age or race labels, so it cannot measure the gap. It checks whether a model trained on face crops still finds children in ordinary web photos (child / no-child labels by the dataset authors). The final models are trained on all of UTKFace with A's most frequently chosen setting and the median chosen number of epochs. The images were downloaded to Google Drive with the authors' script (notebook 09); this section runs on Colab. The demo shows a few clearly harmless scenes as they are, with no captions or links.
+ICCWD has no age or race labels, so it cannot measure the gap. It checks whether a model trained on face crops still finds children in ordinary web photos (child / no-child labels by the dataset authors). The final models are trained on all of UTKFace with A's most frequently chosen setting and the median chosen number of epochs. The images were downloaded to Google Drive with the authors' script (notebook 09). On Colab this section reads them from Drive; on the course GPU server it reads a temporary copy (set `ICCWD_DIR`), which is deleted after the run. The demo shows a few clearly harmless scenes as they are, with no captions or links.
 """))
     A(code('''
 RUN_ICCWD = False
-DEMO_ROWS = []          # row numbers of a few clearly harmless ICCWD scenes, picked by me
+DEMO_IMAGES = []        # file numbers n of a few clearly harmless ICCWD scenes (images/<n>.jpg), picked by me
+ICCWD_DIR = None        # course GPU server: folder holding the temporary copy, e.g. "~/iccwd"; on Colab leave None
 if RUN_ICCWD:
-    from google.colab import drive
-    drive.mount("/content/drive")
-    IC = Path("/content/drive/MyDrive/robust_child_filtering_model/iccwd")
+    if ICCWD_DIR is None:                                       # Colab: the photos stay on Google Drive
+        from google.colab import drive
+        drive.mount("/content/drive")
+        IC = Path("/content/drive/MyDrive/robust_child_filtering_model/iccwd")
+    else:                                                       # server: temporary copy, deleted after the run
+        IC = Path(ICCWD_DIR).expanduser()
+        while not (IC / "COMPLETE").exists():                   # wait until the fetch running next to this notebook ends
+            time.sleep(60)
+    assert (IC / "images").is_dir(), f"no ICCWD images under {IC}"
     ic = pd.read_csv(hf_hub_download("amcretu/iccwd", "image_caption_children_in_the_wild_dataset.csv", repo_type="dataset",
                                      revision="9f76b200c40a8a88c19dc17af8b842581f10f5f5"))
+    ic["n"] = range(len(ic))
     ic["file"] = [IC / "images" / f"{i}.jpg" for i in range(len(ic))]
     ic = ic[ic.file.map(Path.exists) & ic.label.isin(["Final_Child", "Final_NoChild"])].reset_index(drop=True)
     clip_model, preprocess = load_clip(DEVICE)
@@ -948,7 +956,7 @@ if RUN_ICCWD:
     is_child = ic.label == "Final_Child"
     print(f"ICCWD (n={len(ic)}): A flags {np.mean(ic.pred_A[is_child] < 18):.3f} of photos with a child (TPR) "
           f"and {np.mean(ic.pred_A[~is_child] < 18):.3f} of photos without one (FPR)")
-    for i in DEMO_ROWS:                                         # demo: a few clearly harmless scenes, shown as they are
+    for i in ic.index[ic.n.isin(DEMO_IMAGES)]:                  # demo: a few clearly harmless scenes, shown as they are
         plt.figure(figsize=(4, 4)); plt.imshow(Image.open(ic.file[i]).convert("RGB")); plt.axis("off")
         plt.title(f"label: {'child' if is_child[i] else 'no child'} | A: age {ic.pred_A[i]:.0f} -> "
                   f"{'child' if ic.pred_A[i] < 18 else 'adult'}"); plt.show()
@@ -963,7 +971,7 @@ if RUN_ICCWD:
 
 **Failure cases.** The gap is almost entirely in the 10–17 band: Black teenagers are flagged as children about half as often as White teenagers in every model (teen gap 0.25–0.35). No model flagged more than 56% of Black teenagers, while every model flagged at least 77% of White teenagers.
 
-**Limits.** One dataset with perceived-race labels from file names; one CLIP model; one LoRA rank, learning rate and adversary weight; F run once (seed 0) because each run takes about 2 hours; follow-up 3 uses a linear readout, which is weak in the early blocks; GPU results vary slightly between machines (A's gap 10.5 on the server, 11.0 on Colab). Equal detection rates were not forced by per-group thresholds, which would trade the gap for adult false alarms.
+**Limits.** One dataset with perceived-race labels from file names; one CLIP model; one LoRA rank, learning rate and adversary weight; F run once (seed 0) because the three F conditions take about 2.5 hours together; follow-up 3 uses a linear readout, which is weak in the early blocks; GPU results vary slightly between machines (A's gap 10.5 on the server, 11.0 on Colab). Equal detection rates were not forced by per-group thresholds, which would trade the gap for adult false alarms.
 
 **What would help next.** More, carefully labelled photos of Black teenagers (which would also show whether the labels or the pretrained models are at fault), or training objectives that target the 10–17 band directly and act on CLIP's middle blocks, where follow-up 3 finds the bias largest, rather than removing race from the final features."""))
     A(md("## 12. Experiment log"))
