@@ -918,7 +918,7 @@ display(pd.DataFrame([{"readout": n, "gap": round(LAYERS[n]["tpr_gap_W_minus_B"]
     A(md("""
 ## 10. Real web photos (ICCWD): overall check and demo
 
-ICCWD has no age or race labels, so it cannot measure the gap. It checks whether a model trained on face crops still finds children in ordinary web photos (child / no-child labels by the dataset authors). The final models are trained on all of UTKFace with A's most frequently chosen setting and the median chosen number of epochs. The images were downloaded to Google Drive with the authors' script (notebook 09). On Colab this section reads them from Drive; on the course GPU server it reads a temporary copy (set `ICCWD_DIR`), which is deleted after the run. The demo shows a few clearly harmless scenes as they are, with no captions or links.
+ICCWD has no age or race labels, so it cannot measure the gap. It checks whether a model trained on face crops still finds children in ordinary web photos (child / no-child labels by the dataset authors). The final models are trained on all of UTKFace with A's most frequently chosen setting and the median chosen number of epochs. The images were downloaded to Google Drive with the authors' script (notebook 09). On Colab this section reads them from Drive; on the course GPU server it reads a temporary copy (set `ICCWD_DIR`), which is deleted after the run. The demo shows a few clearly harmless scenes I picked (some labelled child, some not), as they are and with no captions or links, under the verdicts of the baseline A and of E: what a filter trained on face crops does with whole web photos.
 """))
     A(code('''
 RUN_ICCWD = False
@@ -947,19 +947,42 @@ if RUN_ICCWD:
             Xi.append(clip_model.encode_image(x).float().cpu().numpy())
     Xi = np.concatenate(Xi)
     from collections import Counter
-    chosen = Counter(json.dumps(r["chosen"], sort_keys=True) for r in refA).most_common(1)[0][0]
-    sA = {**FIXED_A, **json.loads(chosen)}
-    epochs_A = int(np.median([r["epochs"] for r in refA]))
-    st_full = Standardiser().fit(X)
-    A_full, _, _ = fit_head(st_full(X), ages, sA, epochs_A, C.SEED, DEVICE)
-    ic["pred_A"] = A_full(st_full(Xi))
-    is_child = ic.label == "Final_Child"
-    print(f"ICCWD (n={len(ic)}): A flags {np.mean(ic.pred_A[is_child] < 18):.3f} of photos with a child (TPR) "
-          f"and {np.mean(ic.pred_A[~is_child] < 18):.3f} of photos without one (FPR)")
-    for i in ic.index[ic.n.isin(DEMO_IMAGES)]:                  # demo: a few clearly harmless scenes, shown as they are
-        plt.figure(figsize=(4, 4)); plt.imshow(Image.open(ic.file[i]).convert("RGB")); plt.axis("off")
-        plt.title(f"label: {'child' if is_child[i] else 'no child'} | A: age {ic.pred_A[i]:.0f} -> "
-                  f"{'child' if ic.pred_A[i] < 18 else 'adult'}"); plt.show()
+    def full_model(records, fixed, use_groups=False):
+        """Refit on ALL of UTKFace with the most frequently chosen setting and the median chosen epochs."""
+        chosen = Counter(json.dumps(r["chosen"], sort_keys=True) for r in records).most_common(1)[0][0]
+        s = {**fixed, **json.loads(chosen)}
+        ep = int(np.median([r["epochs"] for r in records]))
+        st = Standardiser().fit(X)
+        fn, _, _ = fit_head(st(X), ages, s, ep, C.SEED, DEVICE, None, groups if use_groups else None,
+                            ages if use_groups else None)
+        return lambda Z: fn(st(Z))
+    ic["pred_A"] = full_model(refA, FIXED_A)(Xi)
+    have_E = "E_inv" in RECORDS
+    if have_E:
+        ic["pred_E"] = full_model(RECORDS["E_inv"], FIXED_E, use_groups=True)(Xi)
+    is_child = (ic.label == "Final_Child").to_numpy()
+    for m in ["A"] + (["E"] if have_E else []):
+        pr = ic[f"pred_{m}"].to_numpy()
+        print(f"ICCWD (n = {len(ic)}): model {m} flags {np.mean(pr[is_child] < 18):.3f} of photos with a child "
+              f"and {np.mean(pr[~is_child] < 18):.3f} of photos without one")
+    # demo: a few clearly harmless scenes picked by me, shown as they are, with the models' verdicts
+    demo = ic.index[ic.n.isin(DEMO_IMAGES)].tolist()
+    if demo:
+        cols = min(3, len(demo)); rows = int(np.ceil(len(demo) / cols))
+        fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 5.4 * rows), squeeze=False)
+        for ax in axes.ravel():
+            ax.axis("off")
+        for ax, i in zip(axes.ravel(), demo):
+            ax.imshow(Image.open(ic.file[i]).convert("RGB"))
+            truth = "child" if is_child[i] else "no child"
+            lines = [f"ICCWD label: {truth}"]
+            for m in ["A"] + (["E"] if have_E else []):
+                age = ic.loc[i, f"pred_{m}"]; flag = age < 18
+                ok = flag == is_child[i]
+                lines.append(f"{m}: age {age:.0f} -> {'child' if flag else 'adult'} ({'right' if ok else 'wrong'})")
+            ax.set_title("\\n".join(lines), fontsize=10)
+        plt.suptitle("What the filter sees: whole web photos, not face crops", fontsize=12)
+        plt.tight_layout(); plt.show()
 '''))
     A(md("""## 11. Failure cases, limits and conclusion
 
