@@ -1,0 +1,661 @@
+{
+  "created_utc": "2026-11-25T23:42:04+00:00",
+  "git": {
+    "commit": "c1313001db41497f9851e245606b0d19da0b2813",
+    "dirty": true,
+    "source": "git"
+  },
+  "config": {
+    "ENV": "local",
+    "REPO_DIR": "/home/dlp_user0015/robust_child_filtering_model",
+    "DRIVE_ROOT": "/home/dlp_user0015/robust_child_filtering_model/data/drive",
+    "AUDIT_DRIVE": "/home/dlp_user0015/robust_child_filtering_model/data/drive/audit",
+    "DATA_DIR": "/home/dlp_user0015/robust_child_filtering_model/data/local",
+    "HF_CACHE_DIR": "/home/dlp_user0015/robust_child_filtering_model/data/hf",
+    "RAW_DIR": "/home/dlp_user0015/robust_child_filtering_model/data/drive/audit/raw",
+    "AUDIT_PER_IMAGE_DIR": "/home/dlp_user0015/robust_child_filtering_model/data/drive/audit/per_image",
+    "EMB_DIR": "/home/dlp_user0015/robust_child_filtering_model/data/drive/embeddings",
+    "FOLDS_DIR": "/home/dlp_user0015/robust_child_filtering_model/data/drive/folds",
+    "PER_IMAGE_DIR": "/home/dlp_user0015/robust_child_filtering_model/data/drive/per_image",
+    "RESULTS_DIR": "/home/dlp_user0015/robust_child_filtering_model/results",
+    "FIGURES_DIR": "/home/dlp_user0015/robust_child_filtering_model/figures",
+    "SOURCES": {
+      "utkface": {
+        "hf_repo": "py97/UTKFace-Cropped",
+        "revision": "e80f21fb21fa3631380c3cb634b79be3ac2f4cba",
+        "file": "UTKFace.tar.gz",
+        "sha256": "2c0655397b498e81b82d685ee74bee8c2e4364a5897caf3afec6ea48929024a7",
+        "n_files": 23708,
+        "n_records": 23705
+      },
+      "fairface_train": {
+        "hf_repo": "mutuma00/FairFace",
+        "revision": "e8e670de53803408a4eaebf503d0a35749907f54",
+        "repo_type": "dataset",
+        "files": {
+          "0.25/train-00000-of-00002-d405faba4f4b9b85.parquet": "acebfc4a735050d0ee618b3c690ad91e1b11bcc25151f398f06990bc15e99d06",
+          "0.25/train-00001-of-00002-dd3cb68164727418.parquet": "e8ec1fb27f0745c166b218708bf4923811cd41d85cb998f09f8f624b0eb40326"
+        },
+        "licence": "CC BY 4.0"
+      }
+    },
+    "CLIP_ARCH": "ViT-L-14",
+    "CLIP_WEIGHTS": {
+      "hf_repo": "timm/vit_large_patch14_clip_224.openai",
+      "revision": "18d0535469bb561bf468d76c1d73aa35156c922b",
+      "file": "open_clip_model.safetensors",
+      "sha256": "9ce2e8a8ebfff3793d7d375ad6d3c35cb9aebf3de7ace0fc7308accab7cd207e"
+    },
+    "EMB_TAG": "clip_vitl14",
+    "UTKFACE_RACES": {
+      "0": "White",
+      "1": "Black",
+      "2": "Asian",
+      "3": "Indian",
+      "4": "Others"
+    },
+    "TESTED_GROUPS": [
+      "White",
+      "Black",
+      "Asian",
+      "Indian"
+    ],
+    "PRIMARY_CONTRAST": [
+      "White",
+      "Black"
+    ],
+    "FAIRFACE_AGE_BINS": [
+      "0-2",
+      "3-9",
+      "10-19",
+      "20-29",
+      "30-39",
+      "40-49",
+      "50-59",
+      "60-69",
+      "more than 70"
+    ],
+    "FAIRFACE_GENDERS": [
+      "Male",
+      "Female"
+    ],
+    "FAIRFACE_RACES": [
+      "East Asian",
+      "Indian",
+      "Black",
+      "White",
+      "Middle Eastern",
+      "Latino_Hispanic",
+      "Southeast Asian"
+    ],
+    "SEED": 0,
+    "N_FOLDS": 5,
+    "N_BOOTSTRAP": 2000,
+    "ALPHA": 0.05,
+    "CHILD_AGE_THRESHOLD": 18,
+    "MINOR_MAX_AGE": 17,
+    "ADULT_FPR_RANGE": [
+      20,
+      59
+    ],
+    "MINOR_STRATA": [
+      [
+        0,
+        9
+      ],
+      [
+        10,
+        17
+      ]
+    ],
+    "STRATUM_WEIGHTS": {
+      "0-9": 0.7234,
+      "10-17": 0.2766
+    },
+    "FOLD_AGE_BANDS": [
+      [
+        0,
+        9
+      ],
+      [
+        10,
+        17
+      ],
+      [
+        18,
+        19
+      ],
+      [
+        20,
+        39
+      ],
+      [
+        40,
+        59
+      ],
+      [
+        60,
+        200
+      ]
+    ],
+    "SUCCESS": {
+      "small_gap_max": 0.03,
+      "adult_fpr_max": 0.05,
+      "adult_fpr_vs_A": 0.02,
+      "mae_noninferiority_years": 0.5
+    },
+    "TUNING": {
+      "tpr_drop_max": 0.02
+    },
+    "HOLM_FAMILY": [
+      "E_inv",
+      "F1_1",
+      "F1_4",
+      "F2"
+    ],
+    "CONTEXT_MODELS": [
+      "B",
+      "C",
+      "C2"
+    ],
+    "HOLM_FAMILY_V1": [
+      "B",
+      "C",
+      "C2",
+      "D",
+      "E_inv",
+      "E_eq",
+      "data_fairface",
+      "data_mixup",
+      "F"
+    ],
+    "AUDIT_CHILD_PROMPTS": [
+      "a photo of a child",
+      "a photo of a kid",
+      "a photo of a baby",
+      "a photo of a teenager"
+    ],
+    "AUDIT_ADULT_PROMPTS": [
+      "a photo of an adult",
+      "a photo of a man",
+      "a photo of a woman"
+    ]
+  },
+  "model": "F1_4",
+  "lora_blocks": [
+    20,
+    21,
+    22,
+    23
+  ],
+  "adversary": false,
+  "fixed": {
+    "rank": 8,
+    "alpha": 16,
+    "lora_dropout": 0.1,
+    "lr": 0.0001,
+    "weight_decay": 0.0001,
+    "batch_size": 64,
+    "max_epochs": 10,
+    "adv_lambda": 1.0,
+    "adv_target": "max_ce",
+    "adv_hidden": 128,
+    "adv_lr": 0.01,
+    "adv_steps": 5,
+    "adv_weight_decay": 0.0001
+  },
+  "start_block": 20,
+  "folds": [
+    {
+      "test_fold": 0,
+      "epochs": 1,
+      "lora_blocks": [
+        20,
+        21,
+        22,
+        23
+      ],
+      "inner_val_worst_group_tpr": 0.8521973333333335,
+      "inner_val_feasible": true,
+      "inner_val_mae": 4.413793693386385,
+      "test_mae": 4.360691233491928,
+      "n_lora_params": 131072,
+      "epoch_seconds_tuning": [
+        29.0,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9
+      ],
+      "epoch_seconds_refit": [
+        38.5
+      ],
+      "seconds": 492.7
+    },
+    {
+      "test_fold": 1,
+      "epochs": 5,
+      "lora_blocks": [
+        20,
+        21,
+        22,
+        23
+      ],
+      "inner_val_worst_group_tpr": 0.8490029776674939,
+      "inner_val_feasible": true,
+      "inner_val_mae": 4.302552649854633,
+      "test_mae": 4.269752223641026,
+      "n_lora_params": 131072,
+      "epoch_seconds_tuning": [
+        28.9,
+        28.9,
+        28.9,
+        28.8,
+        28.9,
+        28.8,
+        28.9,
+        28.8,
+        28.8,
+        28.8
+      ],
+      "epoch_seconds_refit": [
+        38.5,
+        38.5,
+        38.5,
+        38.5,
+        38.5
+      ],
+      "seconds": 646.6
+    },
+    {
+      "test_fold": 2,
+      "epochs": 1,
+      "lora_blocks": [
+        20,
+        21,
+        22,
+        23
+      ],
+      "inner_val_worst_group_tpr": 0.8316250322580645,
+      "inner_val_feasible": true,
+      "inner_val_mae": 4.3254629773596776,
+      "test_mae": 4.228764909150052,
+      "n_lora_params": 131072,
+      "epoch_seconds_tuning": [
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9
+      ],
+      "epoch_seconds_refit": [
+        38.5
+      ],
+      "seconds": 493.2
+    },
+    {
+      "test_fold": 3,
+      "epochs": 10,
+      "lora_blocks": [
+        20,
+        21,
+        22,
+        23
+      ],
+      "inner_val_worst_group_tpr": 0.8340400000000001,
+      "inner_val_feasible": true,
+      "inner_val_mae": 4.471113643473247,
+      "test_mae": 4.2801876220992785,
+      "n_lora_params": 131072,
+      "epoch_seconds_tuning": [
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9
+      ],
+      "epoch_seconds_refit": [
+        38.4,
+        38.5,
+        38.5,
+        38.5,
+        38.5,
+        38.5,
+        38.4,
+        38.4,
+        38.4,
+        38.4
+      ],
+      "seconds": 838.8
+    },
+    {
+      "test_fold": 4,
+      "epochs": 3,
+      "lora_blocks": [
+        20,
+        21,
+        22,
+        23
+      ],
+      "inner_val_worst_group_tpr": 0.822976,
+      "inner_val_feasible": true,
+      "inner_val_mae": 4.3889906625158295,
+      "test_mae": 4.302207675620841,
+      "n_lora_params": 131072,
+      "epoch_seconds_tuning": [
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9,
+        28.9
+      ],
+      "epoch_seconds_refit": [
+        38.5,
+        38.5,
+        38.5
+      ],
+      "seconds": 570.9
+    }
+  ],
+  "device": "cuda",
+  "torch": "2.8.0+cu126",
+  "clip_weights": {
+    "hf_repo": "timm/vit_large_patch14_clip_224.openai",
+    "revision": "18d0535469bb561bf468d76c1d73aa35156c922b",
+    "file": "open_clip_model.safetensors",
+    "sha256": "9ce2e8a8ebfff3793d7d375ad6d3c35cb9aebf3de7ace0fc7308accab7cd207e",
+    "open_clip_arch": "ViT-L-14",
+    "quick_gelu": true,
+    "n_quick_gelu_layers": 36,
+    "open_clip_version": "3.3.0"
+  },
+  "A_rebuilt_gap": {
+    "est": 0.10451853944873679,
+    "ci": [
+      0.07106933812806683,
+      0.1364773000449739
+    ]
+  },
+  "A_committed_gap": 0.10974770882788099,
+  "report": {
+    "by_group": {
+      "White": {
+        "n": 10078,
+        "n_minor": 1856,
+        "n_teen_10_17": 750,
+        "n_adult_20_59": 6218,
+        "tpr_strat": {
+          "est": 0.9468234502712477,
+          "ci": [
+            0.938516427579194,
+            0.9547799175440347
+          ]
+        },
+        "tpr_teen": {
+          "est": 0.8266666666666667,
+          "ci": [
+            0.8,
+            0.8529034966055917
+          ]
+        },
+        "tpr_0_9": {
+          "est": 0.9927667269439421,
+          "ci": [
+            0.9870717474628966,
+            0.9972850678733032
+          ]
+        },
+        "fpr_adult": {
+          "est": 0.005467996140238018,
+          "ci": [
+            0.0035952120651831887,
+            0.007445865766340796
+          ]
+        },
+        "age_err_minor_strat": {
+          "est": 0.3860545369518646,
+          "ci": [
+            0.22204285806890994,
+            0.5551041939308805
+          ]
+        },
+        "mae": {
+          "est": 4.698972667013518,
+          "ci": [
+            4.61303783735365,
+            4.787561718900422
+          ]
+        }
+      },
+      "Black": {
+        "n": 4526,
+        "n_minor": 280,
+        "n_teen_10_17": 126,
+        "n_adult_20_59": 3845,
+        "tpr_strat": {
+          "est": 0.8316272727272728,
+          "ci": [
+            0.8000671631637293,
+            0.8625129100192628
+          ]
+        },
+        "tpr_teen": {
+          "est": 0.47619047619047616,
+          "ci": [
+            0.38930237489397795,
+            0.5678016949152542
+          ]
+        },
+        "tpr_0_9": {
+          "est": 0.9675324675324676,
+          "ci": [
+            0.9387698095998176,
+            0.9933344370860927
+          ]
+        },
+        "fpr_adult": {
+          "est": 0.005201560468140442,
+          "ci": [
+            0.0030973543054079967,
+            0.007560007572533862
+          ]
+        },
+        "age_err_minor_strat": {
+          "est": 2.257397075254267,
+          "ci": [
+            1.587262096709554,
+            3.021873252188185
+          ]
+        },
+        "mae": {
+          "est": 4.632114517019747,
+          "ci": [
+            4.509447879123308,
+            4.754305917353847
+          ]
+        }
+      },
+      "Asian": {
+        "n": 3434,
+        "n_minor": 995,
+        "n_teen_10_17": 66,
+        "n_adult_20_59": 2128,
+        "tpr_strat": {
+          "est": 0.9447394950582249,
+          "ci": [
+            0.9166304590006777,
+            0.9692666666666667
+          ]
+        },
+        "tpr_teen": {
+          "est": 0.803030303030303,
+          "ci": [
+            0.7012662337662338,
+            0.8919022869022868
+          ]
+        },
+        "tpr_0_9": {
+          "est": 0.9989235737351991,
+          "ci": [
+            0.9966441072019743,
+            1.0
+          ]
+        },
+        "fpr_adult": {
+          "est": 0.002349624060150376,
+          "ci": [
+            0.00047324399231689324,
+            0.004666464552370959
+          ]
+        },
+        "age_err_minor_strat": {
+          "est": -0.1139126043849967,
+          "ci": [
+            -0.3994882295591525,
+            0.19818055307041882
+          ]
+        },
+        "mae": {
+          "est": 3.187933049232514,
+          "ci": [
+            3.068739830218711,
+            3.3192438923764103
+          ]
+        }
+      },
+      "Indian": {
+        "n": 3975,
+        "n_minor": 591,
+        "n_teen_10_17": 102,
+        "n_adult_20_59": 3104,
+        "tpr_strat": {
+          "est": 0.9171677132202576,
+          "ci": [
+            0.8930236359011657,
+            0.9397776446758874
+          ]
+        },
+        "tpr_teen": {
+          "est": 0.7058823529411765,
+          "ci": [
+            0.6190476190476191,
+            0.79
+          ]
+        },
+        "tpr_0_9": {
+          "est": 0.9979550102249489,
+          "ci": [
+            0.9937106918238994,
+            1.0
+          ]
+        },
+        "fpr_adult": {
+          "est": 0.0019329896907216496,
+          "ci": [
+            0.0006393861892583121,
+            0.0035622050140065894
+          ]
+        },
+        "age_err_minor_strat": {
+          "est": 0.33952112703533305,
+          "ci": [
+            0.08588476224863445,
+            0.6162212777823297
+          ]
+        },
+        "mae": {
+          "est": 4.1822476776890785,
+          "ci": [
+            4.056814158097753,
+            4.306211695485145
+          ]
+        }
+      }
+    },
+    "tpr_gap_W_minus_B": {
+      "est": 0.11519617754397493,
+      "ci": [
+        0.08292255098083931,
+        0.1468384671669263
+      ]
+    },
+    "tpr_teen_gap_W_minus_B": {
+      "est": 0.3504761904761905,
+      "ci": [
+        0.2545303812429507,
+        0.4412654051328954
+      ]
+    },
+    "fpr_diff_B_minus_W": {
+      "est": -0.00026643567209757614,
+      "ci": [
+        -0.0031323551226854454,
+        0.00275604729324202
+      ]
+    },
+    "age_err_gap_B_minus_W": {
+      "est": 1.8713425383024023,
+      "ci": [
+        1.1844839702672858,
+        2.654200300506402
+      ]
+    },
+    "worst_group_tpr_strat": {
+      "est": 0.8316272727272728,
+      "ci": [
+        0.8000671631637293,
+        0.8625129100192628
+      ]
+    },
+    "mae_overall": {
+      "est": 4.288320732800625,
+      "ci": [
+        4.236353348233332,
+        4.341360167903856
+      ]
+    },
+    "n_images": 23705,
+    "bootstrap": {
+      "B": 2000,
+      "seed": 0,
+      "scheme": "within group, multinomial"
+    }
+  },
+  "paired_vs_A": {
+    "gap_reduction_A_minus_M": {
+      "est": -0.01067763809523814,
+      "ci": [
+        -0.025896131984002514,
+        0.004776169787445821
+      ],
+      "p_one_sided": 0.9015492253873063
+    },
+    "mae_increase_M_minus_A": {
+      "est": -0.10096634564515572,
+      "ci": [
+        -0.12532973581739873,
+        -0.07783931945530186
+      ]
+    }
+  }
+}

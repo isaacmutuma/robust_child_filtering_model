@@ -46,3 +46,22 @@ Same UTKFace images and folds as every model. Features (~2.4 GB) and per-image p
 ## Run
 
 `python scripts/followup_layers.py --work ~/fwork` on the course GPU server (UTKFace and F's caches are already in `~/fwork`), after the F rerun has finished. Expected time: ~10 min extraction + ~10 min readouts (estimate). Output `results/followups/layers.json`.
+
+## Result (added 2026-11-26, after the run; nothing above was changed)
+
+Run: `results/followups/layers.json`, commit e932332 (clean), RTX A5000, 708 s. Checks: final embedding = F's stored exact embeddings (max difference 0.0); depth-20 CLS = F's stored tokens entering block 20 (0.0; mean-patch 0.002, fp16 rounding).
+
+| Readout (CLS unless noted) | Gap (95% CI) | B − W over-estimation, years (95% CI) | Age-matched | MAE | Race probe |
+|---|---|---|---|---|---|
+| Depth 0, mean patch | 0.106 (0.047 to 0.165) | 2.72 (1.45 to 3.95) | 2.66 | 12.09 | 0.367 |
+| Depth 8 | 0.152 (0.090 to 0.213) | 4.83 (3.50 to 6.21) | 4.76 | 8.59 | 0.624 |
+| Depth 16 | 0.209 (0.149 to 0.272) | 4.44 (3.24 to 5.72) | 4.00 | 6.69 | 0.735 |
+| **Depth 20 (F1-4 input)** | **0.114 (0.078 to 0.149)** | **2.56 (1.74 to 3.49)** | 1.94 | 4.81 | 0.786 |
+| Depth 23 (F1-1 input) | 0.111 (0.073 to 0.149) | 1.82 (0.95 to 2.79) | 1.02 | 4.77 | 0.796 |
+| Depth 24 | 0.104 (0.067 to 0.141) | 1.42 (0.54 to 2.37) | 0.66 | 4.72 | 0.805 |
+| Depth 24, mean patch | 0.113 (0.081 to 0.145) | 3.01 (2.21 to 3.84) | 2.62 | 4.60 | 0.806 |
+| Final embedding | 0.128 (0.089 to 0.167) | 1.52 (0.66 to 2.49) | 0.73 (−0.10 to 1.56) | 4.81 | 0.822 |
+
+Model A for reference: gap 0.110, over-estimation 1.90, MAE 4.44.
+
+**Reading (rules fixed above).** At depth 20 the gap is 89% and the over-estimation 168% of the final-embedding value, both CIs above 0 → **formed before F**, for the CLS and the mean-patch readout alike. Isaac's prediction was right. Additional observations: the bias is largest mid-network (over-estimation peaks at 5.1 years at block 6, gap 0.232 at block 18); along the CLS stream the last four blocks reduce the over-estimation (2.56 → 1.42), but the mean-patch readout does not (2.33 → 3.01); race readability rises steadily with depth. Both CIs exclude 0 from depth 1 (CLS) / 0 (mean patch), but early readouts are weak (MAE 8–12, few teenagers flagged in any group), so by the rules above this is a readout limit, not evidence on its own. Limits: linear readout; the age-matched over-estimation of the final embedding has a CI including 0; ridge alpha hit the lower grid edge in 11 of 250 fold fits (final embedding and depths 0–2); every depth learns from the same UTKFace labels.

@@ -28,6 +28,17 @@ def module_code(rel):
     return "\n".join(keep).strip() + "\n"
 
 
+def followup3_code():
+    """Library part of scripts/followup_layers.py for the notebook (same functions, notebook names)."""
+    src = (REPO / "scripts/followup_layers.py").read_text()
+    body = src.split("# ── extraction")[1].split("\ndef extract(")[0]
+    rest = src.split("# ── readouts")[1].split("\ndef main(")[0]
+    code = "# ── follow-up 3: features at every depth" + body + "\n# ── readouts" + rest
+    code = code.replace("M.", "").replace("LK.", "").replace("def evaluate(", "def evaluate_depth(")
+    head = src.split("DEPTHS = ")[1].split("\n\n\n")[0]
+    return "DEPTHS = " + head + "\n\n\n" + code
+
+
 CONSTANTS = '''# Fixed settings (chosen before any model was trained; same for every condition)
 from types import SimpleNamespace
 C = SimpleNamespace(
@@ -395,7 +406,7 @@ def build():
 **Ethics.** No images of children are generated. UTKFace photos are only read by the model and never shown. Real photos appear only in Step 10: a few clearly harmless ICCWD scenes, shown as they are; no captions or links.
 """))
 
-    A(md("## 0. Setup\n\nRuns on Colab (Runtime → Change runtime type → T4) or in Jupyter on the course GPU server (set `GPU_ID` below to your assigned GPU). Section 10 needs the ICCWD photos on Google Drive, so it runs on Colab. Approximate time on a T4: data and CLIP features 25 min, A 5 min, E 90 min, follow-up 1 60 min, follow-up 2 25 min. Set a part to `False` to skip it."))
+    A(md("## 0. Setup\n\nRuns on Colab (Runtime → Change runtime type → T4) or in Jupyter on the course GPU server (set `GPU_ID` below to your assigned GPU). Section 10 needs the ICCWD photos on Google Drive, so it runs on Colab. Approximate time on a T4: data and CLIP features 25 min, A 5 min, E 90 min, follow-up 1 60 min, follow-up 2 25 min; fine-tuning (F1-1, F1-4, F2) about 2 hours on the server's RTX A5000, or it loads the saved F predictions when `RUN[\"F\"]` is False. Set a part to `False` to skip it."))
     A(code("""
 import datetime
 print("This code is written at " + str(datetime.datetime.now()))
@@ -406,7 +417,8 @@ GPU_ID = None   # course GPU server: set to your assigned GPU id, e.g. "2"; on C
 import os
 if GPU_ID is not None:
     os.environ["CUDA_VISIBLE_DEVICES"] = str(GPU_ID)   # must be set before torch starts
-RUN = {"A": True, "E": True, "followup1": True, "followup2": True, "F": False, "recheck": False}
+RUN = {"A": True, "E": True, "followup1": True, "followup2": True, "F": False, "recheck": False,
+       "followup3": False}
 import os, json, math, hashlib, tarfile, re, time, urllib.request
 from pathlib import Path, PurePosixPath
 import numpy as np, pandas as pd, torch
@@ -674,10 +686,13 @@ else:
                          for r in committed(f"models/{name}.json")["folds"]]
 display(pd.DataFrame([row(m, RESULTS[m], PAIRED.get(m)) for m in RESULTS]))
 '''))
-    A(md("**After running** — **I observed:** TODO (F results). **Interpretation:** TODO."))
+    A(md("""**After running** (`results/models/F1_1.json`, `F1_4.json`, `F2.json`; class GPU server, RTX A5000, 26 Nov 2026) — **I observed:** fine-tuning inside CLIP did not change the gap. F1-1: gap 10.7 points (95% CI 7.5 to 13.8), change against A −0.3 points (CI −1.8 to +1.2), MAE −0.08 years. F1-4: 11.5 points (CI 8.3 to 14.7), change −1.1 (CI −2.6 to +0.5), MAE −0.10 years. F2 used F1-1's depth (higher mean validation worst-group rate) plus the adversary: 10.3 points (CI 7.1 to 13.3), change +0.1 (CI −1.3 to +1.7), MAE −0.03 years; its adversary was pushed to chance (0.21–0.22 balanced accuracy in four of five folds). In all three, Black minors were still over-estimated by 1.8 to 1.9 years more than White minors, and 47.6–49.2% of Black teenagers were flagged as children against 79.9–82.7% of White teenagers. Unadjusted p = 0.36 (E), 0.66 (F1-1), 0.90 (F1-4), 0.45 (F2); after Holm correction over these four, p = 1.0 for every model: none reduces the gap.
+**Interpretation:** letting CLIP's last blocks change improves age error a little but leaves the group difference where it was. My F2 prediction was wrong: even when CLIP itself can change, the adversary is fooled and the gap does not move. Why fine-tuning cannot reach the bias is follow-up 3 (Section 9.3).
+**A bug I found and fixed.** My first F run (25 Nov) trained in half precision (fp16) without loss scaling. In the earlier LoRA blocks the gradients (about 5·10⁻⁵) fell below fp16's smallest normal number and lost their direction: their cosine with full-precision gradients was between −0.1 and 0.3 in blocks 20–21, against 0.96–1.00 in block 23. I added a gradient scaler (`torch.amp.GradScaler`) and reran all three conditions; the numbers above are from the rerun (its JSONs record commit c131300 with this one file changed, committed afterwards as e932332). The first run led to the same conclusion (F1-4 even widened the gap by 2.0 points).
+**Not yet certain:** F is compared with A rebuilt on the server (gap 10.5 points, against 11.0 on Colab; GPU arithmetic is not bit-for-bit repeatable); only one LoRA rank, learning rate and adversary weight were tried, and F ran once (seed 0)."""))
     A(md("## 8. Re-check of the main comparison (3 seeds)\n\nThe key comparison (A against the best model) is repeated with seeds 1 and 2 (seed 0 is the main run): new random initialisation and batch order, same folds and rule. Set `BEST` to the best model after Section 7."))
     A(code('''
-BEST = "E_inv"          # set to the best model after Section 7 (e.g. "F1_4")
+BEST = "E_inv"          # largest point reduction in Section 7 (E_inv +0.4 points, F2 +0.1); none significant
 if RUN["recheck"]:
     rows_rc = []
     for seed in (0, 1, 2):
@@ -775,6 +790,88 @@ if RUN["followup2"]:
     A(md("**I observed:** LEACE removed linear race information completely (linear probe 0.200, exactly chance) at no cost in age error (MAE −0.03 years). The gap stayed at 10.0 points (95% CI 6.7 to 13.2; reduction 0.9 points, CI −1.1 to 2.9) and Black minors were still over-estimated by 1.9 years more than White minors. **Interpretation:** the bias is not carried by a linear race direction in CLIP's embeddings; my prediction that the gap would close was wrong. **Not yet certain:** race is still readable non-linearly (MLP probe 0.81) and the age head partly rebuilds it (0.60), so this test cannot separate a non-linear race signal from age cues that differ between groups. Changing CLIP itself (F1, F2) is the next test."))
 
     A(md("""
+### 9.3 Follow-up 3: where in CLIP does the bias appear?
+**Observation it came from:** fine-tuning CLIP's last 1 or 4 blocks (F1-1, F1-4, F2) did not narrow the gap, and LEACE showed that the bias is not a linear race direction in the final embedding.
+1. **I wonder:** at which block of CLIP does the over-estimation of Black children's age, and the White − Black gap, appear, and is it already there before the blocks that F fine-tunes (20–23)?
+2. **I predict, because:** it is formed before F: by block 20 the over-estimation and the gap are already at least 75% of their final values, so F could only adjust a bias that was already present.
+3. **To check, I will change** only the depth the age is read from (the CLS token or the mean patch token after each of CLIP's 24 blocks, and the raw patch embeddings) **and keep** frozen CLIP, the folds, one simple readout for every depth (ridge regression, strength chosen on the validation fold) and the metrics fixed.
+
+Reading rule, fixed before the run: "formed before F" if at block 20 both the gap and the over-estimation are at least 75% of the final-embedding value with CIs above 0; "formed in F's blocks" if both are at most 25%. A weak readout (high MAE) at early depths is reported as a readout limit, not as "no bias". The age-matched over-estimation compares Black and White minors of the same true age, because a weak readout pulls every prediction toward the mean age.
+"""))
+    A(code(followup3_code() + '''
+
+if RUN["followup3"]:
+    clip_model, preprocess = load_clip(DEVICE)
+    visual = clip_model.visual.float()
+    feats = np.lib.format.open_memmap(WORK / "layers_cls_mean.npy", "w+", np.float16,
+                                      (len(df), DEPTHS, 2, visual.transformer.width))
+    with torch.no_grad():
+        for b in range(0, len(df), 64):
+            x = torch.stack([preprocess(Image.open(q).convert("RGB")) for q in df.path[b:b + 64]]).to(DEVICE)
+            feats[b:b + 64] = layer_features(visual, x)[0].cpu().numpy().astype(np.float16)
+    LAYERS, race_out = {}, {}
+    reps = [("final_embedding", X)] + [(f"{p}_{l}", None) for l in range(DEPTHS) for p in POOLS
+                                       if not (l == 0 and p == "cls")]
+    for name, F in reps:
+        if F is None:
+            pool, l = name.rsplit("_", 1)
+            F = np.asarray(feats[:, int(l), POOLS.index(pool)], np.float32)
+        LAYERS[name], race_out[name] = evaluate_depth(name, F, df.id.values, ages, groups, folds, plan, DEVICE)
+    race = summarise(race_out, groups)
+    for name in LAYERS:
+        LAYERS[name]["race_probe_bal_acc"] = race["bal_acc"][name]
+    READING = reading(LAYERS, "cls")
+else:
+    saved = committed("followups/layers.json")          # run of scripts/followup_layers.py (same code)
+    LAYERS, READING = saved["results"], saved["reading_cls"]
+print("reading rule (CLS):", READING["case"])
+
+# figure: one panel per measure, CLS and mean-patch readouts across depth; F's LoRA blocks shaded;
+# grey diamond = linear readout of the final CLIP embedding (with 95% CI)
+COL = {"cls": "#257de0", "mean": "#f47230"}
+MARK = {"cls": "o", "mean": "s"}
+LABEL = {"cls": "CLS token", "mean": "mean patch token"}
+panels = [("tpr_gap_W_minus_B", "White − Black TPR gap (minors)"),
+          ("age_err_gap_B_minus_W_age_matched", "Black − White age over-estimation,\\nage-matched (years)"),
+          ("race_probe_bal_acc", "race readable by a linear probe\\n(balanced accuracy, chance 0.20)")]
+fig, axes = plt.subplots(1, 3, figsize=(15, 4.2))
+for ax, (key, title) in zip(axes, panels):
+    ax.axvspan(19.5, 24.5, color="#000000", alpha=0.06, lw=0)
+    for pool in POOLS:
+        ls = [l for l in range(DEPTHS) if f"{pool}_{l}" in LAYERS]
+        est = np.array([LAYERS[f"{pool}_{l}"][key]["est"] for l in ls])
+        ci_ = np.array([LAYERS[f"{pool}_{l}"][key]["ci"] for l in ls], float)
+        ax.fill_between(ls, ci_[:, 0], ci_[:, 1], color=COL[pool], alpha=0.15, lw=0)
+        ax.plot(ls, est, color=COL[pool], lw=2, marker=MARK[pool], ms=4, label=LABEL[pool])
+    fin = LAYERS["final_embedding"][key]
+    ax.errorbar([26.5], [fin["est"]], yerr=[[fin["est"] - fin["ci"][0]], [fin["ci"][1] - fin["est"]]],
+                fmt="D", color="#555555", ms=6, capsize=3, lw=1.2)
+    ax.set_xticks([0, 5, 10, 15, 20, 24, 26.5]); ax.set_xticklabels(["0", "5", "10", "15", "20", "24", "final\\nemb."])
+    if key != "race_probe_bal_acc":
+        ax.axhline(0, color="#999999", lw=0.8)
+    ax.set_title(title, fontsize=10); ax.set_xlabel("depth (block of CLIP ViT-L/14)")
+    ax.set_xlim(-0.5, 28); ax.grid(axis="y", color="#e6e6e6", lw=0.6)
+    for sp in ("top", "right"):
+        ax.spines[sp].set_visible(False)
+    lo, hi = ax.get_ylim()
+    ax.text(22, hi, "blocks F fine-tunes", ha="center", va="top", fontsize=8, color="#333333")
+h, l = axes[0].get_legend_handles_labels()
+fig.legend(h + [plt.Line2D([], [], color="#555555", marker="D", ls="")], l + ["linear readout of the final CLIP embedding"],
+           loc="upper center", ncol=3, frameon=False, fontsize=9)
+plt.tight_layout(rect=(0, 0, 1, 0.92)); plt.show()
+
+show = ["final_embedding"] + [f"cls_{l}" for l in (1, 4, 8, 12, 16, 20, 23, 24)]
+display(pd.DataFrame([{"readout": n, "gap": round(LAYERS[n]["tpr_gap_W_minus_B"]["est"], 3),
+                       "over-estimation (yrs)": round(LAYERS[n]["age_err_gap_B_minus_W"]["est"], 2),
+                       "age-matched (yrs)": round(LAYERS[n]["age_err_gap_B_minus_W_age_matched"]["est"], 2),
+                       "MAE": round(LAYERS[n]["mae_overall"]["est"], 2),
+                       "race probe": round(LAYERS[n]["race_probe_bal_acc"]["est"], 3)} for n in show]))
+'''))
+    A(md("""**I observed** (`results/followups/layers.json`, RTX A5000, 12 minutes): the block-20 features are exactly the ones F starts from, and a linear readout of the final embedding reproduces A's pattern (gap 12.8 points, 95% CI 8.9 to 16.7; A 11.0). At block 20, where F1-4's LoRA starts, the gap is already 11.4 points (CI 7.8 to 14.9), 89% of the final value, and Black minors are over-estimated by 2.6 years more than White minors (CI 1.7 to 3.5), more than in the final embedding (1.5, CI 0.7 to 2.5). The reading rule gives "formed before F" for both the CLS and the mean-patch readout. Inside the network the bias is largest in the middle: the over-estimation peaks at 5.1 years at block 6 and the gap at 23.2 points at block 18. Along the CLS token, which becomes CLIP's embedding, the last four blocks reduce the over-estimation from 2.6 to 1.4 years. Race becomes steadily easier to read with depth (linear probe 0.37 on the raw patches, 0.79 at block 20, 0.82 at the end; chance 0.20).
+**Interpretation:** my prediction was right. The bias is already in the tokens that enter the blocks F fine-tunes, so F could only adjust a bias it was handed, which explains why F1-1, F1-4 and F2 left the gap unchanged. CLIP's own last blocks already shrink the over-estimation somewhat; a fix that acts only there starts from a biased input.
+**Not yet certain:** in the early blocks the readout is weak (CLS readout MAE 6.7 to 11.1 years up to block 16, raw patches 12.1, against 4.8 at the end) and flags few teenagers in any group (41% of White and 20% of Black teenagers at block 12), so the large early values say little. The bias appears from the first blocks, which suggests low-level cues such as skin tone or lighting, but this test cannot show that. The readout is linear; the age-matched over-estimation of the final embedding has a CI that includes 0 (0.7 years, CI −0.1 to 1.6); and the mean-patch readout does not show the late reduction (2.3 years at block 20, 3.0 at block 24). Every depth learns from the same UTKFace labels, so label error and model bias are still not separated."""))
+
+    A(md("""
 ## 10. Real web photos (ICCWD): overall check and demo
 
 ICCWD has no age or race labels, so it cannot measure the gap. It checks whether a model trained on face crops still finds children in ordinary web photos (child / no-child labels by the dataset authors). The final models are trained on all of UTKFace with A's most frequently chosen setting and the median chosen number of epochs. The images were downloaded to Google Drive with the authors' script (notebook 09); this section runs on Colab. The demo shows a few clearly harmless scenes as they are, with no captions or links.
@@ -812,7 +909,19 @@ if RUN_ICCWD:
         plt.title(f"label: {'child' if is_child[i] else 'no child'} | A: age {ic.pred_A[i]:.0f} -> "
                   f"{'child' if ic.pred_A[i] < 18 else 'adult'}"); plt.show()
 '''))
-    A(md("## 11. Failure cases, limits and conclusion\n\nTODO."))
+    A(md("""## 11. Failure cases, limits and conclusion
+
+**Main result.** Across every method tried, the White − Black gap in flagging minors as children stayed between 9.5 and 11.5 points in every model (A 11.0). Removing race from the age head (E), erasing every linear trace of race from CLIP's embeddings (LEACE), and fine-tuning CLIP's last blocks with and without the adversary (F1-1, F1-4, F2) all failed to close it; none of the four planned tests is significant after Holm correction (all Holm p = 1.0).
+
+**What this says about the cause.** E hid race from its adversary without removing it, and LEACE removed every linear trace of race from the embeddings, yet the gap did not move in either; in all eight trained models (A, the context models B, C and C2, E, F1-1, F1-4, F2) Black minors' ages were over-estimated by 1.6 to 2.3 years more than White minors'. The bias therefore does not look like a separate race signal that can be switched off. It is also not caused by having few examples: Asian (66) and Indian (102) teenagers are scarcer than Black teenagers (126), yet the eight models flagged 67% to 92% of them as children against 48% to 56% of Black teenagers, and over-estimated Asian minors' ages by at most 0.6 years. The problem is specific to Black faces being judged older, and it is present before any training on UTKFace: in my audit, zero-shot CLIP flagged 54.8% of Black teenagers (Asian 84.8%), and MiVOLO, an age model trained on other data, over-estimated Black minors' ages by 1.75 years (White 0.23, Asian −0.19). Either these pretrained models see Black teenagers as older than they are, or UTKFace's age labels for Black minors are lower than the faces look; these experiments cannot separate the two.
+
+**Why fine-tuning could not fix it (follow-up 3).** Reading age from every block of CLIP shows that the gap and the over-estimation of Black minors are already present, at 89% and 168% of their final size, in the tokens that enter block 20, the first block F fine-tunes. F could only adjust a bias it was handed. The bias is largest in CLIP's middle blocks (over-estimation up to 5.1 years at block 6, gap up to 23 points at block 18), and CLIP's last blocks partly reduce it. A fix would have to act earlier in the network, or on the data and labels themselves.
+
+**Failure cases.** The gap is almost entirely in the 10–17 band: Black teenagers are flagged as children about half as often as White teenagers in every model (teen gap 0.25–0.35). No model flagged more than 56% of Black teenagers, while every model flagged at least 77% of White teenagers.
+
+**Limits.** One dataset with perceived-race labels from file names; one CLIP model; one LoRA rank, learning rate and adversary weight; F run once (seed 0) because each run takes about 2 hours; follow-up 3 uses a linear readout, which is weak in the early blocks; GPU results vary slightly between machines (A's gap 10.5 on the server, 11.0 on Colab). Equal detection rates were not forced by per-group thresholds, which would trade the gap for adult false alarms.
+
+**What would help next.** More, carefully labelled photos of Black teenagers (which would also show whether the labels or the pretrained models are at fault), or training objectives that target the 10–17 band directly and act on CLIP's middle blocks, where follow-up 3 finds the bias largest, rather than removing race from the final features."""))
     A(md("## 12. Experiment log"))
     A(code('''
 log_rows = []
