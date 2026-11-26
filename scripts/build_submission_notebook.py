@@ -47,7 +47,7 @@ LABEL = {"cls": "CLS token", "mean": "mean patch token"}
 panels = [("tpr_gap_W_minus_B", "White − Black TPR gap (minors)"),
           ("age_err_gap_B_minus_W_age_matched", "Black − White age over-estimation,\nage-matched (years)"),
           ("race_probe_bal_acc", "race readable by a linear probe\n(balanced accuracy, chance 0.20)")]
-fig, axes = plt.subplots(1, 3, figsize=(15, 4.2))
+fig, axes = plt.subplots(1, 3, figsize=(11, 3.9))
 for ax, (key, title) in zip(axes, panels):
     ax.axvspan(19.5, 24.5, color="#000000", alpha=0.06, lw=0)
     for pool in POOLS:
@@ -62,16 +62,18 @@ for ax, (key, title) in zip(axes, panels):
     ax.set_xticks([0, 5, 10, 15, 20, 24, 26.5]); ax.set_xticklabels(["0", "5", "10", "15", "20", "24", "final\nemb."])
     if key != "race_probe_bal_acc":
         ax.axhline(0, color="#999999", lw=0.8)
-    ax.set_title(title, fontsize=10); ax.set_xlabel("depth (block of CLIP ViT-L/14)")
+    ax.set_title(title, fontsize=11); ax.set_xlabel("depth (CLIP block)", fontsize=10)
+    ax.tick_params(labelsize=9)
     ax.set_xlim(-0.5, 28); ax.grid(axis="y", color="#e6e6e6", lw=0.6)
     for sp in ("top", "right"):
         ax.spines[sp].set_visible(False)
     lo, hi = ax.get_ylim()
-    ax.text(22, hi, "blocks F fine-tunes", ha="center", va="top", fontsize=8, color="#333333")
+    if key == panels[0][0]:                                   # label the shading once
+        ax.text(22, hi, "blocks F fine-tunes", ha="center", va="top", fontsize=9, color="#333333")
 h, l = axes[0].get_legend_handles_labels()
 fig.legend(h + [plt.Line2D([], [], color="#555555", marker="D", ls="")], l + ["linear readout of the final CLIP embedding"],
-           loc="upper center", ncol=3, frameon=False, fontsize=9)
-plt.tight_layout(rect=(0, 0, 1, 0.92)); plt.show()'''
+           loc="upper center", ncol=3, frameon=False, fontsize=10)
+plt.tight_layout(rect=(0, 0, 1, 0.9)); plt.show()'''
 
 TEEN_FIG = r'''# figure: teenagers (10-17) flagged as children, per group and model, with 95% CIs
 FIG_MODELS = ["A", "E_inv", "F1_1", "F1_4", "F2"]
